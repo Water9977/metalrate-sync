@@ -53,8 +53,11 @@ Added color coding using Polaris's own tone tokens (no raw hex — stays native 
 - Preview-before-commit and full audit trail (his exact complaint about Gold Feed's silent failures) both work today.
 - Stop-loss, multiple metals, purity presets all in place.
 
+**Solid, added 2026-07-15 (later still):**
+- **Bulk CSV import is now built** — [app.products.import.tsx](metalrate-sync/app/routes/app.products.import.tsx). Download catalog → edit in Excel → upload → matched by SKU → weight/formula set for every matched row in one pass. Reports SKUs it couldn't find and unrecognized formula names instead of silently skipping them. This is the actual answer to Chris's complaint. **Not yet tested live on the dev store — do that before showing him.** Known v1 cap: matches against the first 5,000 variants in the store; genuine 10k+ catalogs need the Bulk Operations API (see TODO).
+
 **Not solid — do not oversell these:**
-- **No bulk import yet.** This is the big one. Chris's actual pain is pressing an import button 100+ times across weeks — a bulk CSV/spreadsheet workflow to assign weight+formula to thousands of variants at once. What's built so far is bulk *sync execution* (safely repricing many already-configured variants in one batched, retried operation) — a different thing from bulk *import/configuration*. Don't imply this is solved until it is. Top of the TODO list below.
+- Bulk import above is untested against a real multi-hundred-row CSV — verify it before demoing.
 - Scheduled auto-sync is config-only — turning the toggle on in Settings doesn't actually run anything yet, no job runner wired up.
 - Running on a local dev tunnel, not real hosting — the URL dies the moment `npm run dev` stops. Can't hand him a persistent link yet.
 - No billing — fine for a private design-partner test, not fine for anyone else.
@@ -74,9 +77,13 @@ Added color coding using Polaris's own tone tokens (no raw hex — stays native 
   - `rates.server.ts` — provider abstraction. Mock (works out of box on dev store), MetalPriceAPI (live), Manual. Caches with TTL, falls back to stale cache if provider is down.
   - `pricing.server.ts` — pure formula engine: weight × purity × rate + wastage + making + markup + tax, rounding modes (exact/whole/.99), stop-loss detection. Karat presets (24K/22K/18K/14K/10K/925).
   - `sync.server.ts` — THE wedge. Preview builder (diff of current vs computed price per variant) + sync executor: groups by product, chunks ≤250 variants/call (`productVariantsBulkUpdate` API limit), `allowPartialUpdates: true`, retries with exponential backoff on throttle, records per-variant outcome in SyncRunItem, unconfirmed variants treated as failed (nothing silently disappears).
+  - `catalog.server.ts` — paginated full-catalog fetch keyed by SKU (cap 5,000 variants for v1 — real 10k+ scale needs the Bulk Operations API, see TODO). Used by bulk import to match CSV rows to real Shopify variants.
+  - `csv.server.ts` — hand-rolled CSV parse/write (no dependency; handles quoted fields, embedded commas/newlines). Import expects a `sku` column, optional `weight_grams` and `formula`.
 - **Routes** (`app/routes/`, Polaris web components):
   - `app._index.tsx` — Dashboard: live rate cards, setup guide (4 steps), last sync summary, at-a-glance stats
-  - `app.products.tsx` — product/variant list via Admin GraphQL, per-variant weight + formula assignment inline
+  - `app.products.tsx` — product/variant list via Admin GraphQL, per-variant weight + formula assignment inline, "Bulk import" button
+  - `app.products.import.tsx` — **the wedge feature.** Download current catalog as CSV → edit in Excel/Sheets → upload → matches by SKU, sets weight/formula for every matched row in one pass, reports SKUs not found and unknown formula names instead of failing silently. Reuses the existing Preview & Sync flow for the actual pricing — import only writes config, it doesn't touch prices itself.
+  - `app.products.export-csv.tsx` — resource route (no UI), streams the current catalog + existing config as a downloadable CSV template
   - `app.formulas.tsx` — formula list + create modal (karat presets, making charge, wastage, markup, tax, rounding, stop-loss)
   - `app.sync.tsx` — Preview & Sync: full diff table (current/new/% change/status), stop-loss + missing-data banners, apply button
   - `app.history.tsx` — run list + per-variant drill-down with rate snapshot per run
@@ -119,16 +126,19 @@ Added color coding using Polaris's own tone tokens (no raw hex — stays native 
 
 ## Open questions / TODO (priority order)
 
-1. [ ] **CSV/XLSX bulk import** — assign weight + formula to many variants at once by upload, matched by SKU or handle. This is Chris's actual pain and the #1 gap before any real demo/handoff.
+1. [ ] Test bulk CSV import against a real multi-row file on the dev store — built but not yet exercised end to end.
 2. [ ] Swap dev-tunnel test data for realistic gold/silver products with correct gram weights before showing anyone the app live.
 3. [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency) — show him the live proof-of-concept once (1) and (2) are done.
-4. [ ] Load-test sync engine at 10k+ variants on a dev store seeded with bulk products.
-5. [ ] Pick hosting provider (Fly.io / Railway / Render / Cloud Run) and deploy — dev tunnel URL isn't persistent.
-6. [ ] Wire real scheduled sync execution (needs hosting decision above; in-process cron dies on serverless).
-7. [ ] Billing setup via Shopify App Pricing + no-charge test plan (once core flow is validated with real users).
-8. [ ] Storefront rate ticker / price breakup theme extension (post-MVP).
-9. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key.
-10. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
+4. [ ] Load-test sync engine at 10k+ variants on a dev store seeded with bulk products. Bulk import's catalog fetch currently caps at 5,000 variants (in-memory pagination) — this will need to switch to the Bulk Operations API for real 10k+ scale, do that here rather than as a separate task.
+5. [ ] **Currency + measuring-unit switching.** Right now weight is grams-only and pricing is single-base-currency-only. Add: (a) a display-currency picker so multi-market merchants aren't locked to their base currency, and (b) a weight-unit picker at input time — troy ounce and pennyweight for the US market, **tola and vori for South Asian gold markets** (relevant to the India-focused segment). Store canonical weight in grams internally, convert only at input/display.
+6. [ ] **Proper documentation.** User-facing: how formulas work, the CSV import column spec, troubleshooting a failed sync. Developer-facing: expand the repo README beyond setup instructions. Needed before handing this to any beta tester who isn't reading this file, and support/docs quality is itself a factor Shopify's App Store review looks at.
+7. [ ] Pick hosting provider (Fly.io / Railway / Render / Cloud Run) and deploy — dev tunnel URL isn't persistent.
+8. [ ] Wire real scheduled sync execution (needs hosting decision above; in-process cron dies on serverless).
+9. [ ] Billing setup via Shopify App Pricing + no-charge test plan (once core flow is validated with real users).
+10. [ ] Storefront rate ticker / price breakup theme extension (post-MVP).
+11. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key.
+12. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
+13. [ ] Buy a domain before App Store submission (not needed to keep building — see reasoning in chat/PR notes; cheap insurance for a support email + privacy policy page that doesn't look like the sketchier competitors' placeholder sites).
 
 **Done:**
 - [x] ~~Create Partner account + dev store~~ (partner account done by user; dev store created; app installed)
@@ -136,6 +146,7 @@ Added color coding using Polaris's own tone tokens (no raw hex — stays native 
 - [x] ~~Prove the core loop works end to end~~ → confirmed 2026-07-15 on the real dev store
 - [x] ~~Fix React Router server/client split bug~~ → see "Known issue found and fixed" above
 - [x] ~~Design pass: color coding~~ → see "Design pass" above
+- [x] ~~Build bulk CSV import~~ → see "app.products.import.tsx" above, needs live testing (item 1)
 
 ## Related files
 
@@ -150,3 +161,4 @@ Added color coding using Polaris's own tone tokens (no raw hex — stays native 
 - **2026-07-15**: [competition-analysis.md](competition-analysis.md) completed — all 18 apps scraped live (listing pages + developer sites). Key findings: nobody has Built for Shopify, marketplace sync (eBay) and reliable bulk-update-at-scale are the two clearest whitespace gaps and both match Chris's exact ask/pain, Gold Feed Inc. (2.8★, Chris's current $40/mo incumbent) is the clearest displacement target with two public 1-star reviews on unresponsive support. MVP feature set and pricing position ($19-35/mo band, under Gold Feed's $40) drafted from this analysis — see competition-analysis.md's Recommendation section.
 - **2026-07-15 (later)**: **App base built.** Name chosen: MetalRate Sync. Scaffolded official React Router template via Shopify CLI (app auto-created in Dev Dashboard). Full data model (7 new Prisma models), 3 core services (rates provider abstraction, pure pricing engine, batch sync executor with retry/audit trail), 6 Polaris web-component UI pages (dashboard w/ setup guide, products, formulas, preview & sync, history, settings), GDPR compliance webhooks. Typecheck clean, production build passes, GraphQL validated against live 2026-04 schema via Shopify Dev MCP. Next: `shopify app dev` walkthrough on dev store (needs user's interactive login).
 - **2026-07-15 (evening)**: **Live end-to-end test passed on the real dev store.** Hit and fixed a React Router server/client bundling bug (constants imported from `.server.ts` files into route JSX — moved to new `app/constants.ts`). Connected live MetalPriceAPI, discovered its free tier is ~100 req/month, raised default rate cache TTL from 15min to 8h and documented it in Settings. Added a per-metal color-coding design pass (Polaris tone tokens, no raw hex) across Dashboard/Formulas/Preview. Confirmed formula → preview → apply → real Shopify price change all work. Wrote an honest Chris-readiness assessment: core loop is solid, but bulk CSV import (Chris's actual pain) doesn't exist yet — that's next before any real demo to him.
+- **2026-07-15 (night)**: **Bulk CSV import built** — new `catalog.server.ts` (paginated SKU-keyed catalog fetch, capped 5k for v1), `csv.server.ts` (dependency-free parser/writer), `app.products.export-csv.tsx` (download current catalog as a template) and `app.products.import.tsx` (upload → match by SKU → bulk-set weight/formula → report what didn't match). GraphQL and all new Polaris components validated against live schema/docs via Shopify Dev MCP; typecheck and build clean. Not yet exercised against a real file — that's the top TODO item now. Added currency/measuring-unit switching (grams/troy oz/tola/vori + display currency picker) and proper user+developer documentation to the roadmap.

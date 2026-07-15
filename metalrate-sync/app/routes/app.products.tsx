@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useLoaderData, useFetcher, useSearchParams } from "react-router";
+import { Link, useLoaderData, useFetcher, useSearchParams } from "react-router";
 import { useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -236,6 +236,11 @@ export default function Products() {
 
   return (
     <s-page heading="Products" inlineSize="large">
+      <Link to="/app/products/import" viewTransition>
+        <s-button slot="primary-action" variant="primary" icon="import">
+          Bulk import
+        </s-button>
+      </Link>
       <s-section>
         <s-stack direction="block" gap="base">
           {formulas.length === 0 && (
