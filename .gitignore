@@ -28,3 +28,6 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code runtime state (not project content)
+.claude/scheduled_tasks.lock
