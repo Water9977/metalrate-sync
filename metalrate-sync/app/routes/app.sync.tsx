@@ -9,7 +9,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { buildPreview, executeSync } from "../services/sync.server";
-import { METAL_LABELS } from "../services/rates.server";
+import { METAL_LABELS, METAL_TONE } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -105,7 +105,13 @@ export default function SyncPreview() {
           <s-section heading="Rates used for this preview">
             <s-stack direction="inline" gap="base">
               {rates.map((rate) => (
-                <s-badge key={rate.metal} tone="info">
+                <s-badge
+                  key={rate.metal}
+                  tone={
+                    METAL_TONE[rate.metal as keyof typeof METAL_TONE] ??
+                    "info"
+                  }
+                >
                   {METAL_LABELS[rate.metal as keyof typeof METAL_LABELS] ??
                     rate.metal}{" "}
                   {rate.currency} {rate.pricePerGram.toFixed(2)}/g ·{" "}

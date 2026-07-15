@@ -1,14 +1,5 @@
 import prisma from "../db.server";
-
-export const SUPPORTED_METALS = ["XAU", "XAG", "XPT", "XPD"] as const;
-export type MetalCode = (typeof SUPPORTED_METALS)[number];
-
-export const METAL_LABELS: Record<MetalCode, string> = {
-  XAU: "Gold",
-  XAG: "Silver",
-  XPT: "Platinum",
-  XPD: "Palladium",
-};
+import { SUPPORTED_METALS, type MetalCode } from "../constants";
 
 const GRAMS_PER_TROY_OZ = 31.1034768;
 

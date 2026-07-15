@@ -90,14 +90,3 @@ function applyRounding(value: number, mode: string): number {
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
-
-/** Common karat presets surfaced in the formula builder UI. */
-export const PURITY_PRESETS = [
-  { label: "24K / Fine (0.999)", value: 0.999 },
-  { label: "22K (0.916)", value: 0.916 },
-  { label: "18K (0.750)", value: 0.75 },
-  { label: "14K (0.585)", value: 0.585 },
-  { label: "10K (0.417)", value: 0.417 },
-  { label: "Sterling 925 (0.925)", value: 0.925 },
-  { label: "Bullion .9999 (1.0)", value: 1.0 },
-];

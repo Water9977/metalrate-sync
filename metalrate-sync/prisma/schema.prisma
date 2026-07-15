@@ -39,7 +39,7 @@ model ShopSettings {
   rateProvider     String   @default("mock") // mock | metalpriceapi | manual
   rateApiKey       String?
   baseCurrency     String   @default("USD")
-  rateTtlMinutes   Int      @default(15)
+  rateTtlMinutes   Int      @default(480) // 8h default — free MetalPriceAPI plans allow ~100 req/month
   scheduleEnabled  Boolean  @default(false)
   scheduleInterval Int      @default(60) // minutes between automatic syncs
   createdAt        DateTime @default(now())

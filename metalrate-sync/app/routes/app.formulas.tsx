@@ -9,8 +9,12 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { METAL_LABELS, SUPPORTED_METALS } from "../services/rates.server";
-import { PURITY_PRESETS } from "../services/pricing.server";
+import {
+  METAL_LABELS,
+  METAL_TONE,
+  SUPPORTED_METALS,
+  PURITY_PRESETS,
+} from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -137,8 +141,16 @@ export default function Formulas() {
                 <s-table-row key={formula.id}>
                   <s-table-cell>{formula.name}</s-table-cell>
                   <s-table-cell>
-                    {METAL_LABELS[formula.metal as keyof typeof METAL_LABELS] ??
-                      formula.metal}
+                    <s-badge
+                      tone={
+                        METAL_TONE[formula.metal as keyof typeof METAL_TONE] ??
+                        "neutral"
+                      }
+                    >
+                      {METAL_LABELS[
+                        formula.metal as keyof typeof METAL_LABELS
+                      ] ?? formula.metal}
+                    </s-badge>
                   </s-table-cell>
                   <s-table-cell>{formula.purityFactor}</s-table-cell>
                   <s-table-cell>

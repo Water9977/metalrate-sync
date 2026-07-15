@@ -3,7 +3,8 @@ import { Link, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { getRates, getSettings, METAL_LABELS } from "../services/rates.server";
+import { getRates, getSettings } from "../services/rates.server";
+import { METAL_LABELS, METAL_TONE } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -136,10 +137,15 @@ export default function Dashboard() {
                 borderRadius="base"
               >
                 <s-stack direction="block" gap="small-300">
-                  <s-text color="subdued">
+                  <s-badge
+                    tone={
+                      METAL_TONE[rate.metal as keyof typeof METAL_TONE] ??
+                      "neutral"
+                    }
+                  >
                     {METAL_LABELS[rate.metal as keyof typeof METAL_LABELS] ??
                       rate.metal}
-                  </s-text>
+                  </s-badge>
                   <s-heading>
                     {rate.currency} {rate.pricePerOzt.toFixed(2)}/ozt
                   </s-heading>

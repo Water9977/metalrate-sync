@@ -9,11 +9,8 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import {
-  getSettings,
-  METAL_LABELS,
-  SUPPORTED_METALS,
-} from "../services/rates.server";
+import { getSettings } from "../services/rates.server";
+import { METAL_LABELS, SUPPORTED_METALS } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -139,7 +136,7 @@ export default function Settings() {
                 name="rateTtlMinutes"
                 min={1}
                 value={String(settings.rateTtlMinutes)}
-                details="How long fetched rates stay fresh"
+                details="On a free MetalPriceAPI plan (~100 requests/month) keep this at 480+ (8h) or higher. Lower it only if you're on a paid plan and need fresher rates."
               ></s-number-field>
             </s-grid>
 

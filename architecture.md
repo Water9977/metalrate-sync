@@ -12,7 +12,53 @@ App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sy
 
 ## Current status
 
-**Stage: Base scaffolded and compiling.** App code lives in [metalrate-sync/](metalrate-sync/). Partner account exists, app created in Dev Dashboard (client_id in shopify.app.toml). Typecheck clean, production build passes, both GraphQL operations validated against the live 2026-04 Admin schema via Shopify's Dev MCP.
+**Stage: Working end-to-end on a real dev store.** App code lives in [metalrate-sync/](metalrate-sync/). Partner account exists, dev store created (`metal-rate-sync-testing-store.myshopify.com`), app installed. **First live test succeeded 2026-07-15**: formula created → product assigned a weight → Preview & Sync showed the computed price → Apply pushed it to Shopify → confirmed the real product price changed in the Shopify admin. The core loop works.
+
+## How it works (plain English)
+
+A merchant creates a **formula**: pick a metal (gold/silver/platinum/palladium), a purity (22K, 18K, sterling, etc.), and how they want to add making charges, wastage %, markup, and tax on top of the raw metal value. That formula is just math — it doesn't touch anything by itself.
+
+Then they go to a **product variant** and tell the app two things: how much it weighs in grams, and which formula to use. Now that variant is "tracked."
+
+Every time the merchant opens **Preview & Sync**, the app fetches today's live gold/silver/platinum/palladium rate, runs every tracked variant through its assigned formula, and shows a table: current price → what the new price would be → % change. **Nothing changes in the store yet at this point** — it's a dry run so the merchant can sanity-check before committing (this is the one thing multiple competitors don't do, see competition-analysis.md).
+
+When they click **Apply**, the app pushes the new prices to Shopify in safe batches and writes down exactly what happened to every single variant — updated, skipped, or failed and why — in **History**. That audit trail is the actual product: the wedge against Gold Feed Inc. (Chris's current $40/mo app) isn't cleverer math, it's that this one doesn't quietly break and go silent when something goes wrong.
+
+## First live test results (2026-07-15)
+
+Confirmed working: rate fetch (MetalPriceAPI live), formula math (22K gold, correct purity factor applied), preview diff table, apply → real Shopify price update, all in the actual dev store admin.
+
+One thing to note from that test: the sample product used ("Snowboard," Shopify's default seeded test data) isn't a real gold item, so its price jumped **+1672%** — that's expected and correct given the nonsense input (a snowboard doesn't weigh what a gold formula assumes), not a bug. **Before demoing to Chris, replace test data with realistic products/weights** — do not show him a snowboard repriced to $12,403.
+
+## Known issue found and fixed: React Router server/client split
+
+Hit this live: `METAL_LABELS`/`SUPPORTED_METALS`/`PURITY_PRESETS` were originally defined inside `.server.ts` service files and imported directly into route components for rendering. React Router strips `.server.ts` files down to just `loader`/`action` when bundling for the browser — pulling a plain constant out of one for JSX breaks the split, and the failure mode is nasty: Vite's error overlay is a full-page modal that blocks the *entire* app regardless of which tab is open, so it looked like every page was broken when only one import was wrong.
+
+**Fix**: moved `METAL_LABELS`, `SUPPORTED_METALS`, `PURITY_PRESETS`, and a new `METAL_TONE` color map into [app/constants.ts](metalrate-sync/app/constants.ts) — a plain file with no `.server` suffix, safe to import from both loaders and JSX. Rule going forward: **anything a route renders directly must not live in a `.server.ts` file**, only functions called inside `loader`/`action` can.
+
+## Known constraint: MetalPriceAPI free tier
+
+Free plan = ~100 requests/month, **per merchant's own API key** (each shop brings its own key in Settings — not shared across installs). At the original 15-minute cache default this blows the monthly quota in about a day. Fixed: default `rateTtlMinutes` raised to 480 (8h) for all new installs, and Settings now explains the tradeoff. Existing shops (including the test store) should bump this manually in Settings if they're on the free tier. Roadmap item: bundle a paid rate-provider key for paying customers so nobody has to think about this themselves.
+
+## Design pass (2026-07-15)
+
+Added color coding using Polaris's own tone tokens (no raw hex — stays native to Shopify admin in light/dark mode): Gold = warning (amber), Silver = neutral (grey), Platinum = info (blue), Palladium = success (teal). Applied consistently to the Dashboard rate cards, the Formulas table's Metal column, and the Preview & Sync rate badges, so a merchant scanning any of these screens can recognize a metal by color, not just text.
+
+## Is this ready to show Chris? (honest answer)
+
+**Ready to screen-share as a live proof-of-concept — not ready to hand him for real use on his real store yet.** Be clear about that distinction with him. Specifically:
+
+**Solid:**
+- The core loop is proven, not theoretical — formula → preview → sync → real price change, verified in the actual admin.
+- Preview-before-commit and full audit trail (his exact complaint about Gold Feed's silent failures) both work today.
+- Stop-loss, multiple metals, purity presets all in place.
+
+**Not solid — do not oversell these:**
+- **No bulk import yet.** This is the big one. Chris's actual pain is pressing an import button 100+ times across weeks — a bulk CSV/spreadsheet workflow to assign weight+formula to thousands of variants at once. What's built so far is bulk *sync execution* (safely repricing many already-configured variants in one batched, retried operation) — a different thing from bulk *import/configuration*. Don't imply this is solved until it is. Top of the TODO list below.
+- Scheduled auto-sync is config-only — turning the toggle on in Settings doesn't actually run anything yet, no job runner wired up.
+- Running on a local dev tunnel, not real hosting — the URL dies the moment `npm run dev` stops. Can't hand him a persistent link yet.
+- No billing — fine for a private design-partner test, not fine for anyone else.
+- Free-tier API quota is fragile under real testing volume (see above).
 
 ## Codebase map (metalrate-sync/)
 
@@ -49,8 +95,6 @@ App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sy
 
 ## Key decisions made so far (validation phase)
 
-## Key decisions made so far
-
 - **Target segment: bullion / coin / by-weight dealers first, not generic fashion jewelry.** Evidence: bullion sellers treat live repricing as "selling bullion without it isn't viable" (multi-year incumbent retention). Fashion jewelry sellers pushed back on Reddit — many price on acquisition cost and only bump periodically, softer/more skeptical buyer.
 - **Core wedge: reliable bulk import/price update at scale, not just live pricing math.** Every incumbent already does the metal-rate math fine. The actual pain (per design partner Chris) is bulk catalog updates breaking/stalling.
 - **First design partner: Chris, CEO of Liquid Bullion** (liquidgoldnuggets.com). Currently pays $40/mo to Gold Feed Inc.'s app (2.8★) which has a broken bulk-import feature; dev is dismissive. Confirmed would pay ~$30-35/mo for a better version. Wants eBay sync eventually too.
@@ -73,18 +117,25 @@ App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sy
 - **Phase 3 — First revenue**: $25-35/mo pricing (validated by Chris), manual outreach only until 25+ reviews, neutral review asks after support wins (Shopify's review-trust crackdown as of July 6, 2026 makes incentivized reviews high-risk — never do that).
 - **Phase 4 — Compound**: chase Built for Shopify badge (unclaimed by any competitor in this niche), start App #2 (customer account extensions, bigger ceiling) once this one is running.
 
-## Open questions / TODO
+## Open questions / TODO (priority order)
 
-- [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency)
-- [ ] Run `shopify app dev` against a dev store and walk the full flow end-to-end (needs interactive login — user action)
-- [ ] CSV/XLSX bulk import of weights/formula assignments (Chris's exact pain; fast follow on the products page)
-- [ ] Load-test sync engine at 10k+ variants on a dev store seeded with bulk products
-- [ ] Wire scheduled sync execution (needs hosting decision: Fly.io / Railway / Render / Cloud Run)
-- [ ] Pick hosting provider
-- [ ] Storefront rate ticker / price breakup theme extension (post-MVP)
-- [ ] Billing setup via Shopify App Pricing + no-charge test plan (post core-flow validation)
-- [x] ~~Create Partner account + dev store~~ (partner account done by user; app created in Dev Dashboard via CLI)
+1. [ ] **CSV/XLSX bulk import** — assign weight + formula to many variants at once by upload, matched by SKU or handle. This is Chris's actual pain and the #1 gap before any real demo/handoff.
+2. [ ] Swap dev-tunnel test data for realistic gold/silver products with correct gram weights before showing anyone the app live.
+3. [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency) — show him the live proof-of-concept once (1) and (2) are done.
+4. [ ] Load-test sync engine at 10k+ variants on a dev store seeded with bulk products.
+5. [ ] Pick hosting provider (Fly.io / Railway / Render / Cloud Run) and deploy — dev tunnel URL isn't persistent.
+6. [ ] Wire real scheduled sync execution (needs hosting decision above; in-process cron dies on serverless).
+7. [ ] Billing setup via Shopify App Pricing + no-charge test plan (once core flow is validated with real users).
+8. [ ] Storefront rate ticker / price breakup theme extension (post-MVP).
+9. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key.
+10. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
+
+**Done:**
+- [x] ~~Create Partner account + dev store~~ (partner account done by user; dev store created; app installed)
 - [x] ~~Decide app name~~ → MetalRate Sync
+- [x] ~~Prove the core loop works end to end~~ → confirmed 2026-07-15 on the real dev store
+- [x] ~~Fix React Router server/client split bug~~ → see "Known issue found and fixed" above
+- [x] ~~Design pass: color coding~~ → see "Design pass" above
 
 ## Related files
 
@@ -98,3 +149,4 @@ App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sy
 - **2026-07-15**: File created. Project motive, target segment, tech stack, and validation trail logged. Competition analysis kicked off (18 apps, 3 parallel research agents).
 - **2026-07-15**: [competition-analysis.md](competition-analysis.md) completed — all 18 apps scraped live (listing pages + developer sites). Key findings: nobody has Built for Shopify, marketplace sync (eBay) and reliable bulk-update-at-scale are the two clearest whitespace gaps and both match Chris's exact ask/pain, Gold Feed Inc. (2.8★, Chris's current $40/mo incumbent) is the clearest displacement target with two public 1-star reviews on unresponsive support. MVP feature set and pricing position ($19-35/mo band, under Gold Feed's $40) drafted from this analysis — see competition-analysis.md's Recommendation section.
 - **2026-07-15 (later)**: **App base built.** Name chosen: MetalRate Sync. Scaffolded official React Router template via Shopify CLI (app auto-created in Dev Dashboard). Full data model (7 new Prisma models), 3 core services (rates provider abstraction, pure pricing engine, batch sync executor with retry/audit trail), 6 Polaris web-component UI pages (dashboard w/ setup guide, products, formulas, preview & sync, history, settings), GDPR compliance webhooks. Typecheck clean, production build passes, GraphQL validated against live 2026-04 schema via Shopify Dev MCP. Next: `shopify app dev` walkthrough on dev store (needs user's interactive login).
+- **2026-07-15 (evening)**: **Live end-to-end test passed on the real dev store.** Hit and fixed a React Router server/client bundling bug (constants imported from `.server.ts` files into route JSX — moved to new `app/constants.ts`). Connected live MetalPriceAPI, discovered its free tier is ~100 req/month, raised default rate cache TTL from 15min to 8h and documented it in Settings. Added a per-metal color-coding design pass (Polaris tone tokens, no raw hex) across Dashboard/Formulas/Preview. Confirmed formula → preview → apply → real Shopify price change all work. Wrote an honest Chris-readiness assessment: core loop is solid, but bulk CSV import (Chris's actual pain) doesn't exist yet — that's next before any real demo to him.
