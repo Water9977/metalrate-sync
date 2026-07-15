@@ -42,6 +42,7 @@ model ShopSettings {
   rateTtlMinutes   Int      @default(480) // 8h default — free MetalPriceAPI plans allow ~100 req/month
   scheduleEnabled  Boolean  @default(false)
   scheduleInterval Int      @default(60) // minutes between automatic syncs
+  lastScheduledSyncAt DateTime? // set by scheduler.server.ts, not the user
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -148,4 +149,17 @@ model SyncRunItem {
   error     String?
 
   @@index([runId])
+}
+
+// Tracks one in-flight/last Bulk Operations catalog fetch per shop, so a
+// retry within the polling window reuses the running job instead of
+// starting a duplicate one on Shopify's side.
+model BulkCatalogJob {
+  id                 Int       @id @default(autoincrement())
+  shop               String    @unique
+  shopifyOperationId String
+  status             String    @default("RUNNING") // RUNNING | COMPLETED | FAILED | CANCELED
+  resultUrl          String?
+  startedAt          DateTime  @default(now())
+  completedAt        DateTime?
 }

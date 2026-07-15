@@ -29,6 +29,24 @@ export const METAL_TONE: Record<
   XPD: "success", // teal-green — palladium
 };
 
+/**
+ * Weight units a merchant might already work in. Canonical storage is
+ * always grams (VariantConfig.weightGrams) — these factors only convert at
+ * input time, on the Products page and in CSV import.
+ */
+export const WEIGHT_UNITS = [
+  { code: "g", label: "Grams (g)", gramsPerUnit: 1 },
+  { code: "oz_t", label: "Troy ounce (oz t)", gramsPerUnit: 31.1034768 },
+  { code: "dwt", label: "Pennyweight (dwt)", gramsPerUnit: 1.55517384 },
+  { code: "tola", label: "Tola", gramsPerUnit: 11.6638038 },
+  { code: "vori", label: "Vori", gramsPerUnit: 11.6638038 },
+] as const;
+export type WeightUnitCode = (typeof WEIGHT_UNITS)[number]["code"];
+
+export function gramsPerUnit(code: string): number {
+  return WEIGHT_UNITS.find((unit) => unit.code === code)?.gramsPerUnit ?? 1;
+}
+
 /** Common karat/fineness presets surfaced in the formula builder UI. */
 export const PURITY_PRESETS = [
   { label: "24K / Fine (0.999)", value: 0.999 },

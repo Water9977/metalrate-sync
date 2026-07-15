@@ -200,9 +200,13 @@ export default function Settings() {
 
       <s-section slot="aside" heading="About scheduling">
         <s-paragraph>
-          Scheduled syncs run server-side once the app is deployed to hosting
-          with a job runner. During local development, use Preview &amp; Sync
-          manually.
+          Scheduled syncs run automatically in the background once enabled,
+          checked every minute and triggered when your interval has elapsed.
+          This needs the app running continuously — it works once deployed to
+          a persistent host (Fly.io, Railway, Render), not on serverless
+          hosting. During local development, the scheduler runs too as long
+          as `npm run dev` stays open, but Preview &amp; Sync is the more
+          reliable way to test manually.
         </s-paragraph>
       </s-section>
     </s-page>

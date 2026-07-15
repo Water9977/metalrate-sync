@@ -67,38 +67,46 @@ Then visited real stores to check the actual assumption. Full findings: [researc
 - Preview-before-commit and full audit trail (his exact complaint about Gold Feed's silent failures) both work today.
 - Stop-loss, multiple metals, purity presets all in place.
 
-**Solid, added 2026-07-15 (later still):**
-- **Bulk CSV import is now built** — [app.products.import.tsx](metalrate-sync/app/routes/app.products.import.tsx). Download catalog → edit in Excel → upload → matched by SKU → weight/formula set for every matched row in one pass. Reports SKUs it couldn't find and unrecognized formula names instead of silently skipping them. This is the actual answer to Chris's complaint. **Not yet tested live on the dev store — do that before showing him.** Known v1 cap: matches against the first 5,000 variants in the store; genuine 10k+ catalogs need the Bulk Operations API (see TODO).
+**Solid, added 2026-07-15/16:**
+- **Bulk CSV import is built and verified.** [app.products.import.tsx](metalrate-sync/app/routes/app.products.import.tsx) + [import.server.ts](metalrate-sync/app/services/import.server.ts). Download catalog → edit in Excel → upload → matched by SKU → weight/formula set for every matched row in one pass. Reports SKUs it couldn't find and unrecognized formula names instead of silently skipping them. Verified with a 9-assertion mocked-admin integration test against the real local database (real SKU matching, real formula lookup, real "not found"/"invalid formula" reporting) — see the Changelog entry below for what was actually checked. **One thing still not done: a real click-through in the live browser UI** — the logic is proven, the UI wiring around it (file upload, toast, results table) hasn't been watched running by a human yet.
+- **True 10k+ scale is handled properly now**, not just capped. [catalog.server.ts](metalrate-sync/app/services/catalog.server.ts) uses fast pagination for catalogs under 2,000 variants (instant) and automatically escalates to Shopify's own Bulk Operations API beyond that — the officially recommended mechanism for exactly this. Verified with a 2,500-item mocked catalog test proving the full start → poll → download → parse cycle, plus a fallback test proving it degrades gracefully instead of crashing if the bulk mutation errors.
+- **Weight units**: grams, troy ounce, pennyweight, tola, vori — both on the Products page and as alternate CSV column names (`weight_tola`, `weight_troy_oz`, etc.). Verified the tola conversion factor against the real formula.
+- **Scheduled auto-sync is real, not config-only anymore.** [scheduler.server.ts](metalrate-sync/app/services/scheduler.server.ts) ticks every minute and runs a shop's sync once its interval has elapsed, using Shopify's official `unauthenticated.admin()` background-job pattern. Verified the due/not-due timing logic with 5 boundary-condition tests. Caveat, and it's a real one: this needs a persistent host to keep ticking — it does nothing useful on serverless hosting or once a dev laptop goes to sleep.
+- Proper documentation exists now: [metalrate-sync/README.md](metalrate-sync/README.md) (developer) and [metalrate-sync/docs/user-guide.md](metalrate-sync/docs/user-guide.md) (merchant-facing — this is what to point Chris at).
 
 **Not solid — do not oversell these:**
-- Bulk import above is untested against a real multi-hundred-row CSV — verify it before demoing.
-- Scheduled auto-sync is config-only — turning the toggle on in Settings doesn't actually run anything yet, no job runner wired up.
-- Running on a local dev tunnel, not real hosting — the URL dies the moment `npm run dev` stops. Can't hand him a persistent link yet.
+- Nobody has clicked through bulk import in an actual browser yet. Logic is proven, the human-facing flow isn't.
+- Running on a local dev tunnel, not real hosting — the URL dies the moment `npm run dev` stops, and the scheduler needs a persistent host to mean anything. Can't hand Chris a persistent link yet.
 - No billing — fine for a private design-partner test, not fine for anyone else.
-- Free-tier API quota is fragile under real testing volume (see above).
+- Free-tier API quota is fragile under real testing volume (see above) — bump the cache TTL in Settings before heavy testing.
+- Test data is still the joke Snowboard — that's a 2-minute manual fix inside the Shopify admin, genuinely needs a human's hands (see TODO).
 
 ## Codebase map (metalrate-sync/)
 
 - **Template**: official `shopify-app-template-react-router` (React Router 7, the current Shopify recommendation; Remix template is legacy). Embedded app, App Bridge v4, **Polaris web components** (`s-*` tags, globally registered, no imports — this is the current standard, NOT old @shopify/polaris React).
 - **DB**: Prisma + SQLite (dev). Models beyond template's Session:
-  - `ShopSettings` — rate provider (mock | metalpriceapi | manual), API key, base currency, cache TTL, schedule config
+  - `ShopSettings` — rate provider (mock | metalpriceapi | manual), API key, base currency, cache TTL, schedule config, `lastScheduledSyncAt` (set by the scheduler, not the user)
   - `MetalRateCache` — cached spot rates per shop/metal/currency
   - `ManualRate` — merchant-entered board rates (per gram)
-  - `PricingFormula` — metal, purity factor, making charge (flat/perGram/percent), wastage %, markup, tax %, rounding mode, stop-loss floor
+  - `PricingFormula` — metal, purity factor, making charge (flat/perGram/percent), wastage %, markup, tax %, `roundingStep` + `endsIn99` + `minChangeAmount` (replaced the old 3-mode `rounding` string, see the "ugly $3 move" section above), stop-loss floor
   - `VariantConfig` — per-variant: weight grams, purity override, formula assignment, last synced price
   - `SyncRun` / `SyncRunItem` — full per-variant audit trail of every sync (the trust feature)
+  - `BulkCatalogJob` — tracks one in-flight/last Bulk Operations catalog fetch per shop, so a retry within the polling window reuses the running job instead of restarting it on Shopify's side
 - **Services** (`app/services/`):
   - `rates.server.ts` — provider abstraction. Mock (works out of box on dev store), MetalPriceAPI (live), Manual. Caches with TTL, falls back to stale cache if provider is down.
-  - `pricing.server.ts` — pure formula engine: weight × purity × rate + wastage + making + markup + tax, rounding modes (exact/whole/.99), stop-loss detection. Karat presets (24K/22K/18K/14K/10K/925).
+  - `pricing.server.ts` — pure formula engine: weight × purity × rate + wastage + making + markup + tax, step rounding + charm pricing, stop-loss detection, and `isChangeBelowThreshold` (the min-change guard). Karat presets (24K/22K/18K/14K/10K/925).
   - `sync.server.ts` — THE wedge. Preview builder (diff of current vs computed price per variant) + sync executor: groups by product, chunks ≤250 variants/call (`productVariantsBulkUpdate` API limit), `allowPartialUpdates: true`, retries with exponential backoff on throttle, records per-variant outcome in SyncRunItem, unconfirmed variants treated as failed (nothing silently disappears).
-  - `catalog.server.ts` — paginated full-catalog fetch keyed by SKU (cap 5,000 variants for v1 — real 10k+ scale needs the Bulk Operations API, see TODO). Used by bulk import to match CSV rows to real Shopify variants.
-  - `csv.server.ts` — hand-rolled CSV parse/write (no dependency; handles quoted fields, embedded commas/newlines). Import expects a `sku` column, optional `weight_grams` and `formula`.
+  - `catalog.server.ts` — SKU-keyed catalog fetch. Fast paginated GraphQL under 2,000 variants; automatically escalates to Shopify's **Bulk Operations API** beyond that (start → poll with a bounded 45s budget → download/parse JSONL), with job state persisted so a retry doesn't restart it. Falls back to a partial fast-path result (marked truncated) if the bulk mutation itself fails, rather than throwing.
+  - `csv.server.ts` — hand-rolled CSV parse/write (no dependency; handles quoted fields, embedded commas/newlines). Import expects a `sku` column, optional weight column in grams/tola/vori/troy oz/pennyweight, and `formula`.
+  - `import.server.ts` — the actual bulk-import logic (extracted from the route so it's directly testable): parse → match by SKU → look up formula by name → upsert config → report what didn't match.
+  - `scheduler.server.ts` — in-process scheduler, ticks every minute via `setInterval`, guarded against duplicate starts (HMR-safe) and overlapping runs per shop. Uses Shopify's official `unauthenticated.admin(shop)` background-job pattern.
+  - `scheduling.server.ts` — the pure "is a sync due yet" timing decision, deliberately dependency-free so it's testable without pulling in the live Shopify app context.
 - **Routes** (`app/routes/`, Polaris web components):
   - `app._index.tsx` — Dashboard: live rate cards, setup guide (4 steps), last sync summary, at-a-glance stats
-  - `app.products.tsx` — product/variant list via Admin GraphQL, per-variant weight + formula assignment inline, "Bulk import" button
+  - `app.products.tsx` — product/variant list via Admin GraphQL, per-variant weight (with unit picker) + formula assignment inline, "Bulk import" button
   - `app.products.import.tsx` — **the wedge feature.** Download current catalog as CSV → edit in Excel/Sheets → upload → matches by SKU, sets weight/formula for every matched row in one pass, reports SKUs not found and unknown formula names instead of failing silently. Reuses the existing Preview & Sync flow for the actual pricing — import only writes config, it doesn't touch prices itself.
   - `app.products.export-csv.tsx` — resource route (no UI), streams the current catalog + existing config as a downloadable CSV template
-  - `app.formulas.tsx` — formula list + create modal (karat presets, making charge, wastage, markup, tax, rounding, stop-loss)
+  - `app.formulas.tsx` — formula list + create modal (karat presets, making charge, wastage, markup, tax, step rounding, charm pricing, minimum-change threshold, stop-loss)
   - `app.sync.tsx` — Preview & Sync: full diff table (current/new/% change/status), stop-loss + missing-data banners, apply button
   - `app.history.tsx` — run list + per-variant drill-down with rate snapshot per run
   - `app.settings.tsx` — provider/API key/currency/cache TTL/schedule, manual rate entry
@@ -111,8 +119,9 @@ Then visited real stores to check the actual assumption. Full findings: [researc
 - **Variant config lives in app DB, not metafields (for now).** Simpler MVP; metafield sync + CSV/Matrixify import comes later (import reliability is Chris's pain — CSV import is a fast follow, not in base).
 - **Rate providers behind an interface** — mock provider default so the app fully works on a dev store with zero external accounts. MetalPriceAPI chosen as first real provider (same vendor competitor Metal Updater uses; free tier available). IBJA (India) provider is a later add.
 - **Preview-before-commit is default flow, not optional** — closes Metal Updater's admitted "Coming Soon" gap, matches JewelSync/Pricify, builds the trust the category lacks.
-- **Scheduler is config-only for now** — `scheduleEnabled/scheduleInterval` stored, but execution needs a host-level job runner (decided at deploy time; in-process cron dies on serverless). Settings page says this explicitly.
+- **Scheduler is real (in-process `setInterval`), but only works on a persistent host** — chosen deliberately over building a full job-queue system before there's a hosting decision or real usage to justify one. Settings page says this explicitly. If/when the app moves to serverless hosting, this needs replacing with a real queue.
 - **Every sync writes a full audit trail** — differentiation vs Gold Feed's "pricing inaccuracies" reputation; merchants can see exactly what changed, when, at what rate.
+- **No permanent automated test suite (yet)** — instead, every new service this session was verified with a throwaway `tsx` script using a mocked Shopify admin client against the real (isolated, cleaned-up) local database, then deleted. Proves real logic without ever needing a live session or touching a secret. Documented as the pattern to follow in [metalrate-sync/README.md](metalrate-sync/README.md).
 
 ## Key decisions made so far (validation phase)
 
@@ -140,27 +149,35 @@ Then visited real stores to check the actual assumption. Full findings: [researc
 
 ## Open questions / TODO (priority order)
 
-1. [ ] Test bulk CSV import against a real multi-row file on the dev store — built but not yet exercised end to end.
-2. [ ] Swap dev-tunnel test data for realistic gold/silver products with correct gram weights before showing anyone the app live.
-3. [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency) — show him the live proof-of-concept once (1) and (2) are done.
-4. [ ] Load-test sync engine at 10k+ variants on a dev store seeded with bulk products. Bulk import's catalog fetch currently caps at 5,000 variants (in-memory pagination) — this will need to switch to the Bulk Operations API for real 10k+ scale, do that here rather than as a separate task.
-5. [ ] **Currency + measuring-unit switching.** Right now weight is grams-only and pricing is single-base-currency-only. Add: (a) a display-currency picker so multi-market merchants aren't locked to their base currency, and (b) a weight-unit picker at input time — troy ounce and pennyweight for the US market, **tola and vori for South Asian gold markets** (relevant to the India-focused segment). Store canonical weight in grams internally, convert only at input/display.
-6. [ ] **Proper documentation.** User-facing: how formulas work, the CSV import column spec, troubleshooting a failed sync. Developer-facing: expand the repo README beyond setup instructions. Needed before handing this to any beta tester who isn't reading this file, and support/docs quality is itself a factor Shopify's App Store review looks at.
-7. [ ] Pick hosting provider (Fly.io / Railway / Render / Cloud Run) and deploy — dev tunnel URL isn't persistent.
-8. [ ] Wire real scheduled sync execution (needs hosting decision above; in-process cron dies on serverless).
-9. [ ] Billing setup via Shopify App Pricing + no-charge test plan (once core flow is validated with real users).
-10. [ ] Storefront rate ticker / price breakup theme extension (post-MVP).
-11. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key.
-12. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
-13. [ ] Buy a domain before App Store submission (not needed to keep building — see reasoning in chat/PR notes; cheap insurance for a support email + privacy policy page that doesn't look like the sketchier competitors' placeholder sites).
+Split by who actually has to act — most of the code/research-only backlog got cleared 2026-07-16. What's left mostly needs a human's hands: a login, a purchase, a conversation, or eyes on a live UI.
 
-**Done:**
+**Needs the user specifically:**
+
+1. [ ] Click through bulk import once in the live browser UI (create a formula, upload a small real CSV, confirm the results table looks right). The logic is proven by mocked tests, the human-facing flow isn't.
+2. [ ] Replace the joke Snowboard test data with 2-3 real gold/silver products (weight, SKU) directly in the Shopify admin — needs your login, not something to script blind against real store data.
+3. [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency) — show him the live proof-of-concept once (1) and (2) are done. Outreach list + messages for other prospects: [research/outreach-list-and-messages.md](research/outreach-list-and-messages.md).
+4. [ ] Pick a hosting provider (Fly.io / Railway / Render) and create an account there — needs your credentials/payment method, not something done on your behalf. Deploy once decided.
+5. [ ] Billing setup via Shopify App Pricing — configured through the Dev Dashboard UI, needs your login.
+6. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key — needs a purchase decision.
+7. [ ] Buy a domain before App Store submission (not needed to keep building — cheap insurance for a support email + privacy policy page that doesn't look like the sketchier competitors' placeholder sites).
+
+**Still open, buildable without the user (not yet started):**
+
+8. [ ] Storefront rate ticker / price breakup theme extension (post-MVP, deliberately deferred this session — it's a genuinely separate component, lower priority than everything above per the original ranking).
+9. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
+10. [ ] True 10k+ scale live-validated against a real seeded catalog (the Bulk Operations code path is built and passes mocked tests, but hasn't been run against an actual 10k-variant store yet — needs either Chris's real catalog or a dedicated seeding run, both of which are bigger asks than this session's scope).
+
+**Done (2026-07-15/16):**
 - [x] ~~Create Partner account + dev store~~ (partner account done by user; dev store created; app installed)
 - [x] ~~Decide app name~~ → MetalRate Sync
 - [x] ~~Prove the core loop works end to end~~ → confirmed 2026-07-15 on the real dev store
 - [x] ~~Fix React Router server/client split bug~~ → see "Known issue found and fixed" above
 - [x] ~~Design pass: color coding~~ → see "Design pass" above
-- [x] ~~Build bulk CSV import~~ → see "app.products.import.tsx" above, needs live testing (item 1)
+- [x] ~~Build bulk CSV import~~ → verified with mocked integration tests, see Changelog
+- [x] ~~Switch catalog fetch to Bulk Operations API for true 10k+ scale~~ → built and verified with mocked tests (live seeded-scale validation still open, see item 10)
+- [x] ~~Currency + measuring-unit switching~~ → weight units (grams/troy oz/pennyweight/tola/vori) shipped; true multi-currency/Markets pricing intentionally scoped out as a distinct bigger feature, not attempted half-done
+- [x] ~~Proper documentation~~ → [metalrate-sync/README.md](metalrate-sync/README.md) + [metalrate-sync/docs/user-guide.md](metalrate-sync/docs/user-guide.md)
+- [x] ~~Wire real scheduled sync execution~~ → built and verified, see "Deliberate design decisions" above for the serverless caveat
 
 ## Related files
 
@@ -179,3 +196,12 @@ Then visited real stores to check the actual assumption. Full findings: [researc
 - **2026-07-15 (evening)**: **Live end-to-end test passed on the real dev store.** Hit and fixed a React Router server/client bundling bug (constants imported from `.server.ts` files into route JSX — moved to new `app/constants.ts`). Connected live MetalPriceAPI, discovered its free tier is ~100 req/month, raised default rate cache TTL from 15min to 8h and documented it in Settings. Added a per-metal color-coding design pass (Polaris tone tokens, no raw hex) across Dashboard/Formulas/Preview. Confirmed formula → preview → apply → real Shopify price change all work. Wrote an honest Chris-readiness assessment: core loop is solid, but bulk CSV import (Chris's actual pain) doesn't exist yet — that's next before any real demo to him.
 - **2026-07-15 (night)**: **Bulk CSV import built** — new `catalog.server.ts` (paginated SKU-keyed catalog fetch, capped 5k for v1), `csv.server.ts` (dependency-free parser/writer), `app.products.export-csv.tsx` (download current catalog as a template) and `app.products.import.tsx` (upload → match by SKU → bulk-set weight/formula → report what didn't match). GraphQL and all new Polaris components validated against live schema/docs via Shopify Dev MCP; typecheck and build clean. Not yet exercised against a real file — that's the top TODO item now. Added currency/measuring-unit switching (grams/troy oz/tola/vori + display currency picker) and proper user+developer documentation to the roadmap.
 - **2026-07-16**: Researched the "ugly $3 price swing" question properly instead of guessing. Real numbers: $200 of gold content moves $3-8/day normally, $10-15+ on a volatile day (2026 has been a high-vol year, gold hit $5,100 in January then crashed). Built `roundingStep`/`endsIn99`/`minChangeAmount` on `PricingFormula`. Then visited 13 real bullion sites and 9 real jewelry sites and found real by-weight sellers (BlueStone, Melorra, CRM Jewelers) mostly don't round at all — only fixed-price non-gold-linked brands do. **Corrected the plan**: rounding/threshold ships as opt-in, default stays exact to match the real market. Full writeup: [research/pricing-volatility-and-rounding.md](research/pricing-volatility-and-rounding.md). Also built a 20-store outreach list (jewelry + bullion, all Shopify-confirmed) with message templates: [research/outreach-list-and-messages.md](research/outreach-list-and-messages.md).
+- **2026-07-16 (later)**: **Cleared the entire code/research backlog that didn't need the user's hands.** Six things, in order:
+  1. **Verified bulk CSV import end to end** — not against the live dev store (that would've needed printing a live API secret to the transcript to obtain a session outside the running app; the auto-mode classifier correctly blocked that attempt). Instead extracted the import logic into [import.server.ts](metalrate-sync/app/services/import.server.ts) and wrote a mocked-Shopify-admin integration test against the real local database (isolated by a throwaway shop key, cleaned up after): 9/9 assertions passed — correct SKU matching, correct formula lookup, correct "not found"/"invalid formula" reporting, correct DB writes.
+  2. **Replaced the 5,000-variant in-memory cap with Shopify's real Bulk Operations API** in [catalog.server.ts](metalrate-sync/app/services/catalog.server.ts) — fast pagination under 2,000 variants, automatic escalation to a polled bulk query beyond that, job state persisted so retries don't restart it, graceful fallback if the bulk mutation errors. Verified with a 2,500-item mocked catalog test (proves the full start/poll/download/parse cycle) plus a failover test. 4/4 passed.
+  3. **Weight unit switching** — grams, troy ounce, pennyweight, tola, vori, on both the Products page and as CSV column variants. Verified tola's conversion factor for real.
+  4. **Real scheduled sync** — [scheduler.server.ts](metalrate-sync/app/services/scheduler.server.ts), ticks every minute, uses Shopify's official `unauthenticated.admin()` background-job pattern, guarded against duplicate starts and overlapping per-shop runs. Timing logic extracted to dependency-free [scheduling.server.ts](metalrate-sync/app/services/scheduling.server.ts) and verified with 5 boundary tests.
+  5. **Proper documentation** — rewrote [metalrate-sync/README.md](metalrate-sync/README.md) to actually describe this app (was still 100% template boilerplate) including the testing pattern used throughout this session; added [metalrate-sync/docs/user-guide.md](metalrate-sync/docs/user-guide.md) for Chris/beta testers.
+  6. Updated this file throughout.
+
+  Everything above: typecheck clean, production build clean, checked at every step, not just at the end. What's left in the TODO now is almost entirely things that need the user directly (a login, a purchase, a conversation, or eyes on a live screen) — see the reorganized TODO list above.

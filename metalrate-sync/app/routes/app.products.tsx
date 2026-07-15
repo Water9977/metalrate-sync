@@ -9,6 +9,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { WEIGHT_UNITS, gramsPerUnit } from "../constants";
 
 const PRODUCTS_QUERY = `#graphql
   query metalRateSyncProducts($first: Int!, $query: String) {
@@ -95,7 +96,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "saveVariant") {
     const variantId = String(form.get("variantId"));
-    const weightGrams = Number(form.get("weightGrams") ?? 0);
+    const weightInput = Number(form.get("weightInput") ?? 0);
+    const weightUnit = String(form.get("weightUnit") ?? "g");
+    const weightGrams = weightInput * gramsPerUnit(weightUnit);
     const formulaIdRaw = String(form.get("formulaId") ?? "");
     const formulaId = formulaIdRaw ? Number(formulaIdRaw) : null;
 
@@ -185,13 +188,26 @@ function VariantRow({
           <input type="hidden" name="currentPrice" value={variant.price} />
           <s-stack direction="inline" gap="base" alignItems="end">
             <s-number-field
-              label="Metal weight (g)"
+              label="Metal weight"
               labelAccessibilityVisibility="exclusive"
-              name="weightGrams"
+              name="weightInput"
               min={0}
               placeholder="0.00"
               value={config ? String(config.weightGrams) : ""}
             ></s-number-field>
+            <s-select
+              label="Unit"
+              labelAccessibilityVisibility="exclusive"
+              name="weightUnit"
+              value="g"
+              details="Existing values are always shown in grams. Pick a different unit to type a new value in that unit instead."
+            >
+              {WEIGHT_UNITS.map((unit) => (
+                <s-option key={unit.code} value={unit.code}>
+                  {unit.label}
+                </s-option>
+              ))}
+            </s-select>
             <s-select
               label="Formula"
               labelAccessibilityVisibility="exclusive"

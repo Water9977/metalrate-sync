@@ -9,8 +9,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { fetchCatalogBySku } from "../services/catalog.server";
-import { parseImportCsv } from "../services/csv.server";
+import { runImport, type ImportSummary } from "../services/import.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -19,14 +18,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
   return { formulaCount };
 };
-
-interface ImportSummary {
-  matched: number;
-  updated: number;
-  notFound: string[];
-  invalidFormula: Array<{ sku: string; formulaName: string }>;
-  truncated: boolean;
-}
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
@@ -39,93 +30,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const text = await file.text();
-  const { rows, error } = parseImportCsv(text);
-  if (error) {
-    return { ok: false, message: error, summary: null };
-  }
-  if (rows.length === 0) {
-    return { ok: false, message: "No data rows found in that CSV.", summary: null };
-  }
-
-  const [{ bySku, truncated }, formulas] = await Promise.all([
-    fetchCatalogBySku(admin),
-    prisma.pricingFormula.findMany({ where: { shop, active: true } }),
-  ]);
-  const formulaByName = new Map(
-    formulas.map((formula) => [formula.name.toLowerCase(), formula]),
-  );
-
-  const summary: ImportSummary = {
-    matched: 0,
-    updated: 0,
-    notFound: [],
-    invalidFormula: [],
-    truncated,
-  };
-
-  const existingConfigs = await prisma.variantConfig.findMany({
-    where: {
-      shop,
-      variantId: { in: rows.map((r) => bySku.get(r.sku)?.variantId ?? "").filter(Boolean) },
-    },
-  });
-  const existingByVariantId = new Map(
-    existingConfigs.map((config) => [config.variantId, config]),
-  );
-
-  for (const row of rows) {
-    const variant = bySku.get(row.sku);
-    if (!variant) {
-      summary.notFound.push(row.sku);
-      continue;
-    }
-    summary.matched += 1;
-
-    let formulaId: number | null =
-      existingByVariantId.get(variant.variantId)?.formulaId ?? null;
-    if (row.formulaName) {
-      const match = formulaByName.get(row.formulaName.toLowerCase());
-      if (match) {
-        formulaId = match.id;
-      } else {
-        summary.invalidFormula.push({ sku: row.sku, formulaName: row.formulaName });
-      }
-    }
-
-    const weightGrams =
-      row.weightGrams ?? existingByVariantId.get(variant.variantId)?.weightGrams ?? 0;
-
-    await prisma.variantConfig.upsert({
-      where: { shop_variantId: { shop, variantId: variant.variantId } },
-      update: {
-        weightGrams,
-        formulaId,
-        productId: variant.productId,
-        productTitle: variant.productTitle,
-        variantTitle: variant.variantTitle,
-        sku: variant.sku,
-        enabled: weightGrams > 0 && formulaId != null,
-      },
-      create: {
-        shop,
-        variantId: variant.variantId,
-        productId: variant.productId,
-        productTitle: variant.productTitle,
-        variantTitle: variant.variantTitle,
-        sku: variant.sku,
-        weightGrams,
-        formulaId,
-        enabled: weightGrams > 0 && formulaId != null,
-      },
-    });
-    summary.updated += 1;
-  }
-
-  return {
-    ok: true,
-    message: `Imported ${summary.updated} of ${rows.length} rows.`,
-    summary,
-  };
+  return runImport(shop, admin, text);
 };
 
 export default function BulkImport() {
@@ -181,8 +86,13 @@ export default function BulkImport() {
         <fetcher.Form method="POST" encType="multipart/form-data">
           <s-stack direction="block" gap="base">
             <s-paragraph>
-              Required column: <s-text type="strong">sku</s-text>. Optional:{" "}
-              <s-text type="strong">weight_grams</s-text> and{" "}
+              Required column: <s-text type="strong">sku</s-text>. Optional:
+              a weight column in whatever unit you already use —{" "}
+              <s-text type="strong">weight_grams</s-text>,{" "}
+              <s-text type="strong">weight_tola</s-text>,{" "}
+              <s-text type="strong">weight_vori</s-text>,{" "}
+              <s-text type="strong">weight_troy_oz</s-text>, or{" "}
+              <s-text type="strong">weight_dwt</s-text> — and{" "}
               <s-text type="strong">formula</s-text> (must match an existing
               formula name exactly). Rows with a SKU the app can't find in
               your store are reported, not silently dropped.

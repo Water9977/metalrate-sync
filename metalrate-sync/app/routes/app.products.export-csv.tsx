@@ -13,7 +13,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const { bySku } = await fetchCatalogBySku(admin);
+  const { bySku } = await fetchCatalogBySku(admin, shop);
   const configs = await prisma.variantConfig.findMany({
     where: { shop },
     include: { formula: true },

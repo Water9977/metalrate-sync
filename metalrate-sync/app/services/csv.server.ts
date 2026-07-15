@@ -1,5 +1,7 @@
 /** Minimal RFC4180-ish CSV parser/writer — quoted fields, embedded commas/quotes/newlines. No dependency needed for this scope. */
 
+import { gramsPerUnit } from "../constants";
+
 export interface ImportRow {
   sku: string;
   weightGrams: number | null;
@@ -10,6 +12,26 @@ export interface ImportParseResult {
   rows: ImportRow[];
   error: string | null;
 }
+
+/**
+ * Accepts a weight column in whatever unit the merchant already has in
+ * their spreadsheet — "weight_grams"/"weight" (grams, the default),
+ * "weight_tola", "weight_vori", "weight_troy_oz"/"weight_oz_t", or
+ * "weight_dwt"/"weight_pennyweight". Converts to grams at parse time so
+ * everything downstream only ever deals with grams.
+ */
+const WEIGHT_COLUMN_UNITS: Record<string, string> = {
+  weight_grams: "g",
+  weight_g: "g",
+  weight: "g",
+  weight_tola: "tola",
+  weight_vori: "vori",
+  weight_troy_oz: "oz_t",
+  weight_oz_t: "oz_t",
+  weight_ozt: "oz_t",
+  weight_dwt: "dwt",
+  weight_pennyweight: "dwt",
+};
 
 export function parseImportCsv(text: string): ImportParseResult {
   const table = parseCsvTable(text);
@@ -23,9 +45,8 @@ export function parseImportCsv(text: string): ImportParseResult {
   if (skuIdx === -1) {
     return { rows: [], error: 'CSV must have a "sku" column.' };
   }
-  const weightIdx = header.findIndex(
-    (cell) => cell === "weight_grams" || cell === "weight",
-  );
+  const weightIdx = header.findIndex((cell) => cell in WEIGHT_COLUMN_UNITS);
+  const weightUnit = weightIdx >= 0 ? WEIGHT_COLUMN_UNITS[header[weightIdx]] : "g";
   const formulaIdx = header.findIndex(
     (cell) => cell === "formula" || cell === "formula_name",
   );
@@ -38,7 +59,10 @@ export function parseImportCsv(text: string): ImportParseResult {
     const weight = weightRaw ? Number(weightRaw) : null;
     parsed.push({
       sku,
-      weightGrams: weight != null && !Number.isNaN(weight) ? weight : null,
+      weightGrams:
+        weight != null && !Number.isNaN(weight)
+          ? weight * gramsPerUnit(weightUnit)
+          : null,
       formulaName:
         formulaIdx >= 0 ? (row[formulaIdx] ?? "").trim() || null : null,
     });
