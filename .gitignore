@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+/build
+/app/build
+/public/build/
+/metalrate-sync/build
+/metalrate-sync/.react-router/
+/metalrate-sync/.cache
+
+# Local DB
+*.sqlite
+*.sqlite-journal
+
+# Shopify CLI local state
+.shopify/*
+.shopify.lock
+
+# Lockfiles kept per-app, not duplicated at root
+/package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db

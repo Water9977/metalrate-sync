@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model ShopSettings {
+  id               Int      @id @default(autoincrement())
+  shop             String   @unique
+  rateProvider     String   @default("mock") // mock | metalpriceapi | manual
+  rateApiKey       String?
+  baseCurrency     String   @default("USD")
+  rateTtlMinutes   Int      @default(15)
+  scheduleEnabled  Boolean  @default(false)
+  scheduleInterval Int      @default(60) // minutes between automatic syncs
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// Latest fetched spot rates, cached per shop so we never hammer the rate API
+model MetalRateCache {
+  id           Int      @id @default(autoincrement())
+  shop         String
+  metal        String // XAU | XAG | XPT | XPD
+  currency     String
+  pricePerOzt  Float
+  pricePerGram Float
+  source       String
+  fetchedAt    DateTime @default(now())
+
+  @@unique([shop, metal, currency])
+}
+
+// Rates typed in by the merchant when they prefer manual control (e.g. IBJA board rate)
+model ManualRate {
+  id           Int      @id @default(autoincrement())
+  shop         String
+  metal        String
+  currency     String   @default("USD")
+  pricePerGram Float
+  updatedAt    DateTime @updatedAt
+
+  @@unique([shop, metal])
+}
+
+model PricingFormula {
+  id                Int             @id @default(autoincrement())
+  shop              String
+  name              String
+  metal             String          @default("XAU")
+  purityFactor      Float           @default(1.0) // 0.999 fine, 0.916 = 22K, 0.75 = 18K
+  makingChargeType  String          @default("flat") // flat | perGram | percent
+  makingChargeValue Float           @default(0)
+  wastagePct        Float           @default(0)
+  markupType        String          @default("percent") // flat | percent
+  markupValue       Float           @default(0)
+  taxPct            Float           @default(0)
+  rounding          String          @default("none") // none | whole | end99
+  stopLossPerGram   Float? // skip repricing when the live rate falls below this
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  variants          VariantConfig[]
+
+  @@unique([shop, name])
+}
+
+model VariantConfig {
+  id             Int             @id @default(autoincrement())
+  shop           String
+  productId      String
+  variantId      String
+  productTitle   String          @default("")
+  variantTitle   String          @default("")
+  sku            String          @default("")
+  weightGrams    Float           @default(0)
+  purityOverride Float?
+  formulaId      Int?
+  formula        PricingFormula? @relation(fields: [formulaId], references: [id], onDelete: SetNull)
+  enabled        Boolean         @default(true)
+  lastPrice      Float?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([shop, variantId])
+  @@index([shop, productId])
+}
+
+model SyncRun {
+  id           Int           @id @default(autoincrement())
+  shop         String
+  status       String        @default("pending") // pending | running | completed | completed_with_errors | failed
+  trigger      String        @default("manual") // manual | scheduled
+  totalItems   Int           @default(0)
+  updatedCount Int           @default(0)
+  skippedCount Int           @default(0)
+  failedCount  Int           @default(0)
+  rateSnapshot String        @default("{}") // JSON of the rates used for this run
+  error        String?
+  startedAt    DateTime      @default(now())
+  finishedAt   DateTime?
+  items        SyncRunItem[]
+
+  @@index([shop, startedAt])
+}
+
+model SyncRunItem {
+  id        Int     @id @default(autoincrement())
+  runId     Int
+  run       SyncRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  variantId String
+  sku       String  @default("")
+  title     String  @default("")
+  oldPrice  Float?
+  newPrice  Float?
+  status    String  @default("pending") // updated | skipped_stop_loss | skipped_no_change | failed
+  error     String?
+
+  @@index([runId])
+}
