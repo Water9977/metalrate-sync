@@ -1,5 +1,5 @@
 import prisma from "../db.server";
-import { computePrice } from "./pricing.server";
+import { computePrice, isChangeBelowThreshold } from "./pricing.server";
 import { getRates, type MetalRate } from "./rates.server";
 
 /**
@@ -98,8 +98,11 @@ export async function buildPreview(shop: string): Promise<{
 
     const oldPrice = config.lastPrice;
     const newPrice = breakdown.finalPrice;
-    const unchanged =
-      oldPrice != null && Math.abs(oldPrice - newPrice) < 0.005;
+    const unchanged = isChangeBelowThreshold(
+      oldPrice,
+      newPrice,
+      config.formula.minChangeAmount,
+    );
 
     return {
       variantId: config.variantId,

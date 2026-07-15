@@ -55,7 +55,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       markupType: String(form.get("markupType") ?? "percent"),
       markupValue: Number(form.get("markupValue") ?? 0),
       taxPct: Number(form.get("taxPct") ?? 0),
-      rounding: String(form.get("rounding") ?? "none"),
+      roundingStep: Number(form.get("roundingStep") ?? 0),
+      endsIn99: form.get("endsIn99") === "on" || form.get("endsIn99") === "true",
+      minChangeAmount: Number(form.get("minChangeAmount") ?? 0),
       stopLossPerGram: stopLossRaw === "" ? null : Number(stopLossRaw),
       active: form.get("active") === "on" || form.get("active") === "true",
     };
@@ -131,6 +133,8 @@ export default function Formulas() {
               <s-table-header>Purity</s-table-header>
               <s-table-header>Making</s-table-header>
               <s-table-header>Markup</s-table-header>
+              <s-table-header>Rounding</s-table-header>
+              <s-table-header>Min change</s-table-header>
               <s-table-header>Stop-loss</s-table-header>
               <s-table-header>Variants</s-table-header>
               <s-table-header>Status</s-table-header>
@@ -164,6 +168,17 @@ export default function Formulas() {
                   <s-table-cell>
                     {formula.markupValue}
                     {formula.markupType === "percent" ? "%" : " flat"}
+                  </s-table-cell>
+                  <s-table-cell>
+                    {formula.roundingStep > 0
+                      ? `Nearest ${formula.roundingStep}`
+                      : "Exact"}
+                    {formula.endsIn99 ? " · .99" : ""}
+                  </s-table-cell>
+                  <s-table-cell>
+                    {formula.minChangeAmount > 0
+                      ? `± ${formula.minChangeAmount}`
+                      : "Always"}
                   </s-table-cell>
                   <s-table-cell>
                     {formula.stopLossPerGram != null
@@ -269,19 +284,43 @@ export default function Formulas() {
               ></s-number-field>
             </s-grid>
 
-            <s-grid gridTemplateColumns="1fr 1fr" gap="base">
-              <s-select label="Price rounding" name="rounding">
-                <s-option value="none">Exact (cents)</s-option>
-                <s-option value="whole">Nearest whole</s-option>
-                <s-option value="end99">End in .99</s-option>
-              </s-select>
-              <s-number-field
-                label="Stop-loss rate per gram"
-                name="stopLossPerGram"
-                min={0}
-                details="Skip repricing if the live rate drops below this. Leave blank to disable."
-              ></s-number-field>
-            </s-grid>
+            <s-divider></s-divider>
+
+            <s-select
+              label="Round to nearest"
+              name="roundingStep"
+              value="0"
+              details="Exact cents tracks the market closely — use this for bullion and coins. A step of 5 or 10 keeps jewellery prices looking clean instead of landing on odd numbers like 217.32."
+            >
+              <s-option value="0">Exact (cents) — bullion</s-option>
+              <s-option value="1">Nearest whole dollar</s-option>
+              <s-option value="5">Nearest 5</s-option>
+              <s-option value="10">Nearest 10</s-option>
+              <s-option value="25">Nearest 25</s-option>
+              <s-option value="50">Nearest 50</s-option>
+              <s-option value="100">Nearest 100</s-option>
+            </s-select>
+
+            <s-switch
+              label="End in .99"
+              name="endsIn99"
+              details="Charm pricing — e.g. 220 becomes 219.99"
+            ></s-switch>
+
+            <s-number-field
+              label="Minimum change to trigger an update"
+              name="minChangeAmount"
+              min={0}
+              value="0"
+              details="If the new price is closer than this to the current price, leave it alone instead of nudging it a couple of dollars either way. Set to 0 for bullion (always track exactly), or 5 to 10 for jewellery so prices only move when it's worth it."
+            ></s-number-field>
+
+            <s-number-field
+              label="Stop-loss rate per gram"
+              name="stopLossPerGram"
+              min={0}
+              details="Skip repricing if the live rate drops below this. Leave blank to disable."
+            ></s-number-field>
 
             <s-switch label="Active" name="active" checked></s-switch>
 

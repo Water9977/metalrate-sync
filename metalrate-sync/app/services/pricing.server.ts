@@ -59,7 +59,11 @@ export function computePrice(
   const taxable = subtotal + markup;
   const tax = taxable * (formula.taxPct / 100);
 
-  const finalPrice = applyRounding(taxable + tax, formula.rounding);
+  const finalPrice = applyRounding(
+    taxable + tax,
+    formula.roundingStep,
+    formula.endsIn99,
+  );
 
   return {
     metalValue: round2(metalValue),
@@ -72,21 +76,39 @@ export function computePrice(
   };
 }
 
-function applyRounding(value: number, mode: string): number {
-  switch (mode) {
-    case "whole":
-      return Math.round(value);
-    case "end99": {
-      // 1234.56 -> 1234.99 style ending, never rounding below the raw value by more than a cent
-      const whole = Math.floor(value);
-      return whole + 0.99;
-    }
-    case "none":
-    default:
-      return round2(value);
+/**
+ * step = 0 keeps exact cents (bullion — track spot as closely as possible).
+ * step > 0 snaps to the nearest multiple of that amount (5/10/25/...) for
+ * clean jewellery pricing. endsIn99 layers classic charm pricing on top.
+ */
+function applyRounding(value: number, step: number, endsIn99: boolean): number {
+  if (step > 0) {
+    const stepped = Math.round(value / step) * step;
+    return endsIn99 ? round2(Math.max(0, stepped - 0.01)) : round2(stepped);
   }
+  if (endsIn99) {
+    return round2(Math.floor(value) + 0.99);
+  }
+  return round2(value);
 }
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+/**
+ * True when moving from oldPrice to newPrice is too small to bother with,
+ * per the formula's configured floor. A half-cent epsilon always applies
+ * even at minChangeAmount 0, so floating-point noise never counts as a
+ * "change" — that's what stops a $220 chain from twitching to $217/$223
+ * on every tiny rate wobble.
+ */
+export function isChangeBelowThreshold(
+  oldPrice: number | null,
+  newPrice: number,
+  minChangeAmount: number,
+): boolean {
+  if (oldPrice == null) return false;
+  const floor = Math.max(0.005, minChangeAmount);
+  return Math.abs(newPrice - oldPrice) < floor;
 }

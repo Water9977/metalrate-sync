@@ -84,7 +84,9 @@ model PricingFormula {
   markupType        String          @default("percent") // flat | percent
   markupValue       Float           @default(0)
   taxPct            Float           @default(0)
-  rounding          String          @default("none") // none | whole | end99
+  roundingStep      Float           @default(0) // round to nearest this many currency units. 0 = exact cents (bullion), 5/10/25 = clean jewellery pricing
+  endsIn99          Boolean         @default(false) // after rounding, land on a .99 ending (charm pricing)
+  minChangeAmount   Float           @default(0) // skip repricing if the move is smaller than this, so a $220 chain doesn't twitch to $217 or $223
   stopLossPerGram   Float? // skip repricing when the live rate falls below this
   active            Boolean         @default(true)
   createdAt         DateTime        @default(now())
