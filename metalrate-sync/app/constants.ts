@@ -51,8 +51,15 @@ export function gramsPerUnit(code: string): number {
  * India city-specific gold/silver rate symbols confirmed live against
  * MetalPriceAPI's own /v1/symbols endpoint (2026-07-18) — e.g. "XAU-MUMB"
  * for Mumbai gold. Requires a paid MetalPriceAPI plan (free tier returns
- * "requires a paid plan" for these). Platinum/palladium have no city-level
- * data at all, so city selection only ever affects gold and silver.
+ * "requires a paid plan" for these).
+ *
+ * Deliberately trimmed to 4 major metros, and only ones with BOTH gold and
+ * silver data (the API's own full list has 34 gold-only cities down to
+ * tier-2 towns — not worth surfacing to a merchant). Platinum/palladium
+ * have zero city-level data anywhere in the world, for any provider — that
+ * is a structural fact about how those metals trade (arbitrage-free global
+ * commodities), not a gap in this API. Gold+silver is the maximum any city
+ * anywhere can offer, full stop.
  */
 export interface RateCity {
   code: string;
@@ -60,40 +67,10 @@ export interface RateCity {
   hasSilver: boolean;
 }
 export const INDIA_RATE_CITIES: RateCity[] = [
-  { code: "AHME", label: "Ahmedabad", hasSilver: true },
-  { code: "BANG", label: "Bangalore", hasSilver: true },
-  { code: "BHOP", label: "Bhopal", hasSilver: false },
-  { code: "CHAN", label: "Chandigarh", hasSilver: true },
-  { code: "CHEN", label: "Chennai", hasSilver: true },
-  { code: "COIM", label: "Coimbatore", hasSilver: true },
-  { code: "DEHR", label: "Dehradun", hasSilver: false },
-  { code: "FARI", label: "Faridabad", hasSilver: false },
-  { code: "GURG", label: "Gurgaon", hasSilver: false },
-  { code: "GUWA", label: "Guwahati", hasSilver: false },
-  { code: "HYDE", label: "Hyderabad", hasSilver: true },
-  { code: "INDO", label: "Indore", hasSilver: false },
-  { code: "JAIP", label: "Jaipur", hasSilver: true },
-  { code: "KANP", label: "Kanpur", hasSilver: false },
-  { code: "KOCH", label: "Kochi", hasSilver: false },
-  { code: "KOLH", label: "Kolhapur", hasSilver: false },
-  { code: "KOLK", label: "Kolkata", hasSilver: true },
-  { code: "LUCK", label: "Lucknow", hasSilver: true },
-  { code: "LUDH", label: "Ludhiana", hasSilver: false },
-  { code: "MADU", label: "Madurai", hasSilver: true },
-  { code: "MALA", label: "Malappuram", hasSilver: false },
-  { code: "MANG", label: "Mangalore", hasSilver: true },
-  { code: "MEER", label: "Meerut", hasSilver: false },
   { code: "MUMB", label: "Mumbai", hasSilver: true },
-  { code: "MYSO", label: "Mysore", hasSilver: true },
-  { code: "NAGP", label: "Nagpur", hasSilver: true },
-  { code: "NOID", label: "Noida", hasSilver: false },
-  { code: "PATN", label: "Patna", hasSilver: true },
-  { code: "POND", label: "Pondicherry", hasSilver: false },
-  { code: "PUNE", label: "Pune", hasSilver: true },
-  { code: "RAIP", label: "Raipur", hasSilver: false },
-  { code: "SALE", label: "Salem", hasSilver: true },
-  { code: "VIJA", label: "Vijayawada", hasSilver: true },
-  { code: "VISA", label: "Visakhapatnam", hasSilver: false },
+  { code: "KOLK", label: "Kolkata", hasSilver: true },
+  { code: "CHEN", label: "Chennai", hasSilver: true },
+  { code: "BANG", label: "Bangalore", hasSilver: true },
 ];
 
 /** Common karat/fineness presets surfaced in the formula builder UI. */

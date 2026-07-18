@@ -91,19 +91,31 @@ The nav fix (commit 7705300) was real but a second, independent bug sat behind i
 - **Settings now only shows what's relevant**: API key + India city picker appear only when provider = MetalPriceAPI; manual rate entry appears only when provider = Manual. Provider dropdown drives visibility client-side.
 - **Setup guide became a real walkthrough**: numbered colored steps, plain-English description under each ("A formula is your pricing recipe: metal + purity + your charges"), done-steps collapse to a checkmark. Plus a permanent "How it works" aside on the dashboard for returning users.
 - **Formula delete is now two-click** (arm → "Confirm delete?") instead of instant on a misclick.
-- Formula editing shipped earlier same day (edit button + pre-filled modal).
+- Formula editing shipped earlier same day (edit button + pre-filled modal) — but the actual *open the modal* call was still broken, see below.
 
-## Pricing decision (proposed 2026-07-18, needs user sign-off)
+## Formula edit — root cause #2, actually fixed this time (2026-07-18)
 
-Anchors: JewelSync $9.99–14.99, GPE $15.99–39.99, Gold Feed $40 (the one Chris pays for and hates), Chris's stated willingness $30–35. API cost ~zero per merchant (see above). Proposal — two paid tiers plus trial, keep it simple:
+Edit button existed, was wired to `openEditFormula`, but clicking it still did nothing. Cause: `showModal()` called `document.getElementById("formula-modal")?.show?.()` — **`.show()` isn't a real method on `s-modal`.** Confirmed against Shopify's own docs: the actual API is `shopify.modal.show(id)` / `shopify.modal.hide(id)` via the App Bridge object (already available in the component from `useAppBridge()`). Optional chaining (`?.show?.()`) silently swallowed the call to a method that never existed — no error, no console warning, just nothing happening, which is exactly why it was easy to miss the first time. Same wrong pattern was used for closing the modal after a successful save; fixed both call sites to use `shopify.modal.show/hide("formula-modal")`. Grepped the rest of the codebase for the same `getElementById(...).show/hide` pattern — this was the only place it existed.
+
+## India city list narrowed (2026-07-18, user decision)
+
+Trimmed `INDIA_RATE_CITIES` from all 34 API-supported cities down to **4 major metros with full gold+silver coverage**: Mumbai, Kolkata, Chennai, Bangalore. Dropped every tier-2/tier-3 city and every gold-only city (the original list had 16 gold-only cities down to places like Kolhapur and Meerut — not worth surfacing).
+
+**Restating the hard constraint, since it came up again:** "cities with all metal prices" tops out at gold+silver, everywhere, for every provider — platinum and palladium have zero city-level pricing data anywhere in the world. This isn't a narrower search fixing it, it's how those two metals trade (arbitrage-free global commodities, confirmed via independent research on 2026-07-16). The 4 curated cities are already the maximum any city can offer.
+
+## Pricing — finalized 2026-07-18 (user decision: start at $30/mo)
+
+Superseded the earlier $14.99/$29.99 proposal — user set the floor at $30/mo and had pricing shift up from there. Anchors: JewelSync $9.99–14.99, GPE $15.99–39.99, Gold Feed $40 (the one Chris pays for and hates), Chris's stated willingness $30–35.
 
 | Plan | Price | Limits |
 |---|---|---|
 | Free trial | 7 days | full features |
-| **Starter** | **$14.99/mo** | up to 1,000 variants, twice-daily auto-sync, all formula features, CSV import |
-| **Growth** | **$29.99/mo** | up to 25,000 variants, city rates (when on paid data plan), priority support, future: eBay/POS |
+| **Starter** | **$30/mo** | up to 1,000 variants, twice-daily auto-sync, all formula features, CSV import |
+| **Growth** | **$50/mo** | up to 25,000 variants, India city rates, priority support, future: eBay/POS |
 
-Logic: Starter undercuts GPE's entry and matches JewelSync's ceiling while offering more (import, preview, audit trail). Growth sits $10 under Gold Feed with a directly better product — that's the Chris-switch pitch. Don't go cheaper: every 5-star review in this niche is support-driven, and support time is the real cost.
+**Positioning shift from the earlier proposal, worth being explicit about:** at $14.99/$29.99, Growth undercut Gold Feed's $40 — a clean "cheaper AND better" pitch. At $30/$50, Starter now sits *at* Chris's own stated ceiling and Growth sits *above* Gold Feed's price entirely. The switch pitch for Growth-tier prospects has to lean fully on reliability/features now, price is no longer the hook there. Starter is still the exact "leave Gold Feed" offer for Chris specifically. Not second-guessing the decision, just recording the tradeoff for when pricing gets revisited later.
+
+Not yet built in-app (Shopify App Pricing plans are configured in the Dev Dashboard UI, not code) — this table is the source of truth for whoever sets that up.
 
 ## Is this ready to show Chris? (honest answer)
 

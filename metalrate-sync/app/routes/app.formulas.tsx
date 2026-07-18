@@ -102,19 +102,18 @@ export default function Formulas() {
       if (fetcher.data.ok) {
         formRef.current?.reset();
         setEditingFormula(null);
-        // Close the modal after successful save.
-        (document.getElementById("formula-modal") as HTMLElement & { hide?: () => void })?.hide?.();
+        // Close the modal after successful save. shopify.modal is the real
+        // API (App Bridge) -- element.hide()/.show() don't exist, calling
+        // them was a silent no-op since optional chaining swallows it.
+        shopify.modal.hide("formula-modal");
       }
     }
   }, [fetcher.state, fetcher.data, shopify]);
 
-  const showModal = () => {
-    (document.getElementById("formula-modal") as HTMLElement & { show?: () => void })?.show?.();
-  };
   const openNewFormula = () => setEditingFormula(null);
   const openEditFormula = (formula: Formula) => {
     setEditingFormula(formula);
-    showModal();
+    shopify.modal.show("formula-modal");
   };
 
   return (
