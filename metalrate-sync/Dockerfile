@@ -1,7 +1,10 @@
 FROM node:20-alpine
 RUN apk add --no-cache openssl
 
-EXPOSE 3000
+# @react-router/serve defaults to 8080 when PORT isn't set (Railway sets
+# PORT explicitly via a variable) -- this used to say 3000, which never
+# matched what the app actually listened on.
+EXPOSE 8080
 
 WORKDIR /app
 
