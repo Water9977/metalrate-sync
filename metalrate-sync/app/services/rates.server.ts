@@ -1,5 +1,5 @@
 import prisma from "../db.server";
-import { SUPPORTED_METALS, type MetalCode } from "../constants";
+import { SUPPORTED_METALS, INDIA_RATE_CITIES, type MetalCode } from "../constants";
 
 const GRAMS_PER_TROY_OZ = 31.1034768;
 
@@ -46,6 +46,7 @@ export async function getRates(shop: string): Promise<MetalRate[]> {
       settings.rateApiKey,
       settings.baseCurrency,
       shop,
+      settings.rateCity,
     );
     for (const rate of fresh) {
       await prisma.metalRateCache.upsert({
@@ -96,10 +97,11 @@ async function fetchFromProvider(
   apiKey: string | null,
   currency: string,
   shop: string,
+  city: string | null,
 ): Promise<MetalRate[]> {
   switch (provider) {
     case "metalpriceapi":
-      return fetchMetalPriceApi(apiKey, currency);
+      return fetchMetalPriceApi(apiKey, currency, city);
     case "manual":
       return fetchManualRates(shop, currency);
     case "mock":
@@ -108,22 +110,43 @@ async function fetchFromProvider(
   }
 }
 
+/** Metal -> requested API symbol, using a city-specific rate when the shop
+ * has one configured and that city actually publishes data for the metal
+ * (platinum/palladium have no India city data at all; some cities only
+ * have gold, not silver — see INDIA_RATE_CITIES). Falls back to the plain
+ * global symbol otherwise. */
+function symbolFor(metal: MetalCode, city: string | null): string {
+  if (!city) return metal;
+  const cityInfo = INDIA_RATE_CITIES.find((c) => c.code === city);
+  if (!cityInfo) return metal;
+  if (metal === "XAU") return `XAU-${city}`;
+  if (metal === "XAG" && cityInfo.hasSilver) return `XAG-${city}`;
+  return metal; // platinum/palladium: no city data exists, always global
+}
+
 /**
  * MetalPriceAPI (metalpriceapi.com) — free tier available, same vendor
  * competitor Metal Updater uses. Returns rates quoted as currency-per-metal
  * when using base=USD&currencies=XAU..., where the value is metal priced in
- * base currency terms (inverted).
+ * base currency terms (inverted). City-specific symbols (confirmed live
+ * against /v1/symbols, e.g. "XAU-MUMB") require a paid plan — the free tier
+ * returns a clear "requires a paid plan" error for those, surfaced as-is.
  */
 async function fetchMetalPriceApi(
   apiKey: string | null,
   currency: string,
+  city: string | null,
 ): Promise<MetalRate[]> {
   if (!apiKey) {
     throw new Error(
       "MetalPriceAPI selected but no API key saved in Settings.",
     );
   }
-  const url = `https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(apiKey)}&base=${encodeURIComponent(currency)}&currencies=${SUPPORTED_METALS.join(",")}`;
+  const symbolByMetal = new Map(
+    SUPPORTED_METALS.map((metal) => [metal, symbolFor(metal, city)]),
+  );
+  const requestedSymbols = Array.from(symbolByMetal.values());
+  const url = `https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(apiKey)}&base=${encodeURIComponent(currency)}&currencies=${requestedSymbols.join(",")}`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`MetalPriceAPI HTTP ${response.status}`);
@@ -131,16 +154,23 @@ async function fetchMetalPriceApi(
   const payload = (await response.json()) as {
     success: boolean;
     rates?: Record<string, number>;
-    error?: { info?: string };
+    error?: { message?: string; info?: string };
   };
   if (!payload.success || !payload.rates) {
-    throw new Error(payload.error?.info ?? "MetalPriceAPI returned an error");
+    throw new Error(
+      payload.error?.message ??
+        payload.error?.info ??
+        "MetalPriceAPI returned an error",
+    );
   }
 
   const now = new Date();
   return SUPPORTED_METALS.flatMap((metal) => {
     // API returns metal-per-currency (e.g. XAU per 1 USD); invert for USD/ozt.
-    const inverse = payload.rates?.[metal];
+    // Always stored under the plain metal code — the city suffix only
+    // affects which symbol was requested, not how the rate is keyed.
+    const symbol = symbolByMetal.get(metal) ?? metal;
+    const inverse = payload.rates?.[symbol];
     if (!inverse || inverse <= 0) return [];
     const pricePerOzt = 1 / inverse;
     return [
@@ -149,7 +179,7 @@ async function fetchMetalPriceApi(
         currency,
         pricePerOzt,
         pricePerGram: pricePerOzt / GRAMS_PER_TROY_OZ,
-        source: "metalpriceapi",
+        source: symbol === metal ? "metalpriceapi" : `metalpriceapi (${symbol})`,
         fetchedAt: now,
       },
     ];

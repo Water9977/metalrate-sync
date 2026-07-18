@@ -10,7 +10,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { getSettings } from "../services/rates.server";
-import { METAL_LABELS, SUPPORTED_METALS } from "../constants";
+import { METAL_LABELS, SUPPORTED_METALS, INDIA_RATE_CITIES } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -21,6 +21,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     settings: {
       rateProvider: settings.rateProvider,
       hasApiKey: Boolean(settings.rateApiKey),
+      rateCity: settings.rateCity ?? "",
       baseCurrency: settings.baseCurrency,
       rateTtlMinutes: settings.rateTtlMinutes,
       scheduleEnabled: settings.scheduleEnabled,
@@ -40,12 +41,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "saveSettings") {
     const apiKeyInput = String(form.get("rateApiKey") ?? "").trim();
+    const rateCityInput = String(form.get("rateCity") ?? "").trim();
     await prisma.shopSettings.upsert({
       where: { shop },
       update: {
         rateProvider: String(form.get("rateProvider") ?? "mock"),
         // Keep the stored key when the field is left blank.
         ...(apiKeyInput ? { rateApiKey: apiKeyInput } : {}),
+        rateCity: rateCityInput || null,
         baseCurrency: String(form.get("baseCurrency") ?? "USD").toUpperCase(),
         rateTtlMinutes: Math.max(1, Number(form.get("rateTtlMinutes") ?? 15)),
         scheduleEnabled: form.get("scheduleEnabled") === "on",
@@ -58,6 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shop,
         rateProvider: String(form.get("rateProvider") ?? "mock"),
         rateApiKey: apiKeyInput || null,
+        rateCity: rateCityInput || null,
         baseCurrency: String(form.get("baseCurrency") ?? "USD").toUpperCase(),
       },
     });
@@ -123,6 +127,21 @@ export default function Settings() {
               }
               details="Only needed for the MetalPriceAPI provider. Get a free key at metalpriceapi.com."
             ></s-text-field>
+
+            <s-select
+              label="India city rate (optional)"
+              name="rateCity"
+              value={settings.rateCity}
+              details="Use a city-specific gold/silver rate instead of the global spot price. Confirmed available on MetalPriceAPI but requires a paid plan (their free tier returns a 'requires a paid plan' error for these) — leave on Global if you're on the free tier. Only affects gold and silver; platinum and palladium always use the global rate since no city data exists for them."
+            >
+              <s-option value="">Global (no city)</s-option>
+              {INDIA_RATE_CITIES.map((city) => (
+                <s-option key={city.code} value={city.code}>
+                  {city.label}
+                  {!city.hasSilver ? " (gold only)" : ""}
+                </s-option>
+              ))}
+            </s-select>
 
             <s-grid gridTemplateColumns="1fr 1fr" gap="base">
               <s-text-field

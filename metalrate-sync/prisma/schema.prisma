@@ -38,6 +38,7 @@ model ShopSettings {
   shop             String   @unique
   rateProvider     String   @default("mock") // mock | metalpriceapi | manual
   rateApiKey       String?
+  rateCity         String? // MetalPriceAPI India city code (e.g. "MUMB") -- requires a paid plan, gold/silver only
   baseCurrency     String   @default("USD")
   rateTtlMinutes   Int      @default(480) // 8h default — free MetalPriceAPI plans allow ~100 req/month
   scheduleEnabled  Boolean  @default(false)
