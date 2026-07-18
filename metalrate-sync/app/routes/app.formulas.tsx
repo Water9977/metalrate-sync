@@ -4,7 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { useLoaderData, useFetcher } from "react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -81,12 +81,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   return { ok: false, message: "Unknown action" };
 };
 
+type Formula = ReturnType<typeof useLoaderData<typeof loader>>["formulas"][number];
+
 export default function Formulas() {
   const { formulas } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
   const formRef = useRef<HTMLFormElement>(null);
   const saving = fetcher.state !== "idle";
+  const [editingFormula, setEditingFormula] = useState<Formula | null>(null);
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.message) {
@@ -95,11 +98,21 @@ export default function Formulas() {
       });
       if (fetcher.data.ok) {
         formRef.current?.reset();
+        setEditingFormula(null);
         // Close the modal after successful save.
         (document.getElementById("formula-modal") as HTMLElement & { hide?: () => void })?.hide?.();
       }
     }
   }, [fetcher.state, fetcher.data, shopify]);
+
+  const showModal = () => {
+    (document.getElementById("formula-modal") as HTMLElement & { show?: () => void })?.show?.();
+  };
+  const openNewFormula = () => setEditingFormula(null);
+  const openEditFormula = (formula: Formula) => {
+    setEditingFormula(formula);
+    showModal();
+  };
 
   return (
     <s-page heading="Pricing formulas">
@@ -108,6 +121,7 @@ export default function Formulas() {
         variant="primary"
         commandFor="formula-modal"
         command="--show"
+        onClick={openNewFormula}
       >
         New formula
       </s-button>
@@ -121,7 +135,12 @@ export default function Formulas() {
               purity × rate, plus making charges, markup and tax. Create one,
               then assign it to products.
             </s-paragraph>
-            <s-button variant="primary" commandFor="formula-modal" command="--show">
+            <s-button
+              variant="primary"
+              commandFor="formula-modal"
+              command="--show"
+              onClick={openNewFormula}
+            >
               Create your first formula
             </s-button>
           </s-stack>
@@ -192,18 +211,26 @@ export default function Formulas() {
                     </s-badge>
                   </s-table-cell>
                   <s-table-cell>
-                    <s-button
-                      variant="tertiary"
-                      tone="critical"
-                      icon="delete"
-                      accessibilityLabel={`Delete ${formula.name}`}
-                      onClick={() =>
-                        fetcher.submit(
-                          { intent: "delete", id: String(formula.id) },
-                          { method: "POST" },
-                        )
-                      }
-                    ></s-button>
+                    <s-stack direction="inline" gap="small-200">
+                      <s-button
+                        variant="tertiary"
+                        icon="edit"
+                        accessibilityLabel={`Edit ${formula.name}`}
+                        onClick={() => openEditFormula(formula)}
+                      ></s-button>
+                      <s-button
+                        variant="tertiary"
+                        tone="critical"
+                        icon="delete"
+                        accessibilityLabel={`Delete ${formula.name}`}
+                        onClick={() =>
+                          fetcher.submit(
+                            { intent: "delete", id: String(formula.id) },
+                            { method: "POST" },
+                          )
+                        }
+                      ></s-button>
+                    </s-stack>
                   </s-table-cell>
                 </s-table-row>
               ))}
@@ -212,26 +239,42 @@ export default function Formulas() {
         )}
       </s-section>
 
-      <s-modal id="formula-modal" heading="New pricing formula">
-        <fetcher.Form method="POST" ref={formRef}>
+      <s-modal
+        id="formula-modal"
+        heading={editingFormula ? "Edit pricing formula" : "New pricing formula"}
+      >
+        {/* Remount on every target change so each Polaris field's default
+            value attribute reflects the formula being edited, rather than
+            relying on these custom elements syncing a changed React prop. */}
+        <fetcher.Form
+          method="POST"
+          ref={formRef}
+          key={editingFormula?.id ?? "new"}
+        >
           <input type="hidden" name="intent" value="save" />
+          <input type="hidden" name="id" value={editingFormula?.id ?? ""} />
           <s-stack direction="block" gap="base">
             <s-text-field
               label="Formula name"
               name="name"
               placeholder="e.g. 22K Gold Chains"
               required
+              value={editingFormula?.name ?? ""}
             ></s-text-field>
 
             <s-grid gridTemplateColumns="1fr 1fr" gap="base">
-              <s-select label="Metal" name="metal">
+              <s-select label="Metal" name="metal" value={editingFormula?.metal ?? "XAU"}>
                 {SUPPORTED_METALS.map((metal) => (
                   <s-option key={metal} value={metal}>
                     {METAL_LABELS[metal]}
                   </s-option>
                 ))}
               </s-select>
-              <s-select label="Purity" name="purityFactor">
+              <s-select
+                label="Purity"
+                name="purityFactor"
+                value={String(editingFormula?.purityFactor ?? 1)}
+              >
                 {PURITY_PRESETS.map((preset) => (
                   <s-option key={preset.value} value={String(preset.value)}>
                     {preset.label}
@@ -241,7 +284,11 @@ export default function Formulas() {
             </s-grid>
 
             <s-grid gridTemplateColumns="1fr 1fr" gap="base">
-              <s-select label="Making charge type" name="makingChargeType">
+              <s-select
+                label="Making charge type"
+                name="makingChargeType"
+                value={editingFormula?.makingChargeType ?? "flat"}
+              >
                 <s-option value="flat">Flat amount</s-option>
                 <s-option value="perGram">Per gram</s-option>
                 <s-option value="percent">% of metal value</s-option>
@@ -250,12 +297,16 @@ export default function Formulas() {
                 label="Making charge value"
                 name="makingChargeValue"
                 min={0}
-                value="0"
+                value={String(editingFormula?.makingChargeValue ?? 0)}
               ></s-number-field>
             </s-grid>
 
             <s-grid gridTemplateColumns="1fr 1fr" gap="base">
-              <s-select label="Markup type" name="markupType">
+              <s-select
+                label="Markup type"
+                name="markupType"
+                value={editingFormula?.markupType ?? "percent"}
+              >
                 <s-option value="percent">Percent</s-option>
                 <s-option value="flat">Flat amount</s-option>
               </s-select>
@@ -263,7 +314,7 @@ export default function Formulas() {
                 label="Markup value"
                 name="markupValue"
                 min={0}
-                value="0"
+                value={String(editingFormula?.markupValue ?? 0)}
               ></s-number-field>
             </s-grid>
 
@@ -272,14 +323,14 @@ export default function Formulas() {
                 label="Wastage %"
                 name="wastagePct"
                 min={0}
-                value="0"
+                value={String(editingFormula?.wastagePct ?? 0)}
                 details="Jewellery convention — % of metal value"
               ></s-number-field>
               <s-number-field
                 label="Tax %"
                 name="taxPct"
                 min={0}
-                value="0"
+                value={String(editingFormula?.taxPct ?? 0)}
                 details="e.g. GST"
               ></s-number-field>
             </s-grid>
@@ -289,7 +340,7 @@ export default function Formulas() {
             <s-select
               label="Round to nearest"
               name="roundingStep"
-              value="0"
+              value={String(editingFormula?.roundingStep ?? 0)}
               details="Exact cents tracks the market closely — use this for bullion and coins. A step of 5 or 10 keeps jewellery prices looking clean instead of landing on odd numbers like 217.32."
             >
               <s-option value="0">Exact (cents) — bullion</s-option>
@@ -305,13 +356,14 @@ export default function Formulas() {
               label="End in .99"
               name="endsIn99"
               details="Charm pricing — e.g. 220 becomes 219.99"
+              {...(editingFormula?.endsIn99 ? { checked: true } : {})}
             ></s-switch>
 
             <s-number-field
               label="Minimum change to trigger an update"
               name="minChangeAmount"
               min={0}
-              value="0"
+              value={String(editingFormula?.minChangeAmount ?? 0)}
               details="If the new price is closer than this to the current price, leave it alone instead of nudging it a couple of dollars either way. Set to 0 for bullion (always track exactly), or 5 to 10 for jewellery so prices only move when it's worth it."
             ></s-number-field>
 
@@ -319,10 +371,19 @@ export default function Formulas() {
               label="Stop-loss rate per gram"
               name="stopLossPerGram"
               min={0}
+              value={
+                editingFormula?.stopLossPerGram != null
+                  ? String(editingFormula.stopLossPerGram)
+                  : ""
+              }
               details="Skip repricing if the live rate drops below this. Leave blank to disable."
             ></s-number-field>
 
-            <s-switch label="Active" name="active" checked></s-switch>
+            <s-switch
+              label="Active"
+              name="active"
+              {...((editingFormula?.active ?? true) ? { checked: true } : {})}
+            ></s-switch>
 
             <s-button
               variant="primary"

@@ -58,6 +58,22 @@ Then visited real stores to check the actual assumption. Full findings: [researc
 
 **So the honest takeaway: rounding/threshold is a real, useful, and differentiated feature (nobody else in the competitive set has it), but it should ship as an opt-in a jeweler reaches for if they want it, not a default the app pushes on everyone.** Default stays exact/always-update to match what real by-weight sellers actually do today. If a merchant explicitly wants clean numbers (a valid ask, just not the market norm), roundingStep 5 or 10 plus minChangeAmount ~5 gets there.
 
+## Two real bugs found during first click-through, both fixed (2026-07-16)
+
+**Navigation was broken app-wide.** Every primary-action button and every in-content link was built as `<Link to="..."><s-button slot="primary-action">...</s-button></Link>`. Two separate problems in that one pattern: (1) Polaris slots only project from a *direct child* of `s-page` — wrapping the button in a `<Link>` (which renders an `<a>`) means the button itself is no longer a direct child, so it never gets slotted and the click does nothing; (2) `<Link><s-link>...</s-link></Link>` is a nested anchor, also broken. Confirmed against Shopify's own official docs examples, which use `useNavigate()` + `onClick` for primary actions and plain `<s-link href="...">` for in-content links — no `Link` wrapper at all. Rewrote every navigation call site across all 6 route files this way. Also fixed the CSV download button, which was a plain `<a href>` that would've opened a new browser tab outside the embedded session and failed authentication — now does an authenticated `fetch()` + client-side blob download instead.
+
+**Formulas couldn't be edited, only deleted.** Two compounding bugs: no Edit button existed in the table at all, and even the save action's `<input type="hidden" name="id">` was missing from the form — so even a hypothetical edit submission would've always silently created a new formula instead of updating, since the action branches on whether an `id` was present. Added an Edit button per row, wired it to pre-fill the modal from the selected formula (remounting the form via `key={formula.id}` so every field's default value reflects the right formula rather than relying on custom elements to sync a changed prop), and added the missing hidden `id` field. Editing a formula's Active switch is how activate/deactivate works — no separate control needed.
+
+## MetalPriceAPI investigated — pricing math confirmed correct, no location support exists
+
+A merchant test (50g, 22K, zero markup formula) showed $5,867.99 while a casual web search suggested "$6000+." Investigated properly rather than assuming either the app or the API was wrong:
+
+- Live-tested the actual API response: gold was $3,984.54/oz at that moment. Working the formula by hand (50 × 0.916 × $3,984.54/31.1034768 = $5,867.25, then the formula's own ".99" charm-pricing rounding → $5,867.99) matches the app's output exactly.
+- Confirmed the app's `1/rate` inversion logic is correct by comparing against the API's own `USDXAU` field, which is the pre-inverted equivalent — both agree to the cent.
+- The ">$6000" figure was almost certainly a **retail price** (includes a dealer's markup), not spot — apples to oranges against a formula explicitly named "no taxes or making charges." Also: different dealers' spot quotes routinely differ 1-2% from each other just from feed timing (matches what the pricing-volatility research already found).
+- **MetalPriceAPI has no city/country/exchange selection at all — confirmed by reading the full docs.** It returns one global spot number; there's no data to build a location picker on top of. Did not add fake UI for a feature the data doesn't support.
+- The real version of "location matters" here is India-specific: MCX/IBJA rates are genuinely different from international spot (import duty + GST), which is exactly why an IBJA/India rate provider was already on the roadmap (see TODO) — that's a new integration to build, not a Settings dropdown.
+
 ## Is this ready to show Chris? (honest answer)
 
 **Ready to screen-share as a live proof-of-concept — not ready to hand him for real use on his real store yet.** Be clear about that distinction with him. Specifically:
