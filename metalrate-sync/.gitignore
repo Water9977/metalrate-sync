@@ -16,7 +16,9 @@ database.sqlite
 .env
 .env.*
 
-package-lock.json
+# package-lock.json intentionally committed (not the template default) --
+# `npm ci` in the Dockerfile requires it, and it's the right call for
+# reproducible builds anyway. yarn/pnpm unused here.
 yarn.lock
 pnpm-lock.yaml
 
