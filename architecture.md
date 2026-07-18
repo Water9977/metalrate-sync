@@ -103,19 +103,23 @@ Trimmed `INDIA_RATE_CITIES` from all 34 API-supported cities down to **4 major m
 
 **Restating the hard constraint, since it came up again:** "cities with all metal prices" tops out at gold+silver, everywhere, for every provider — platinum and palladium have zero city-level pricing data anywhere in the world. This isn't a narrower search fixing it, it's how those two metals trade (arbitrage-free global commodities, confirmed via independent research on 2026-07-16). The 4 curated cities are already the maximum any city can offer.
 
-## Pricing — finalized 2026-07-18 (user decision: start at $30/mo)
+## Pricing — revised 2026-07-18 evening ($25/$45, no permanent free tier)
 
-Superseded the earlier $14.99/$29.99 proposal — user set the floor at $30/mo and had pricing shift up from there. Anchors: JewelSync $9.99–14.99, GPE $15.99–39.99, Gold Feed $40 (the one Chris pays for and hates), Chris's stated willingness $30–35.
+Two revisions in one day: first $14.99/$29.99 (proposal) → $30/$50 (user's "start at $30") → now **$25/$45** after user reconsidered with a $25–30 floor. Checked against Shopify's own billing best-practices docs this round.
 
 | Plan | Price | Limits |
 |---|---|---|
-| Free trial | 7 days | full features |
-| **Starter** | **$30/mo** | up to 1,000 variants, twice-daily auto-sync, all formula features, CSV import |
-| **Growth** | **$50/mo** | up to 25,000 variants, India city rates, priority support, future: eBay/POS |
+| Free trial | **14 days** | full features (Shopify's docs explicitly recommend 14 days) |
+| **Starter** | **$25/mo** | up to 1,000 variants, twice-daily auto-sync, all formula features, CSV import |
+| **Growth** | **$45/mo** | up to 25,000 variants, India city rates, priority support, future: eBay/POS |
 
-**Positioning shift from the earlier proposal, worth being explicit about:** at $14.99/$29.99, Growth undercut Gold Feed's $40 — a clean "cheaper AND better" pitch. At $30/$50, Starter now sits *at* Chris's own stated ceiling and Growth sits *above* Gold Feed's price entirely. The switch pitch for Growth-tier prospects has to lean fully on reliability/features now, price is no longer the hook there. Starter is still the exact "leave Gold Feed" offer for Chris specifically. Not second-guessing the decision, just recording the tradeoff for when pricing gets revisited later.
+Why this beats $30/$50: Starter at $25 restores a real price wedge under Gold Feed's $40 (the Chris-switch offer), stays above the junk tier ($9.99 apps), and satisfies the $25–30 floor. Billing itself via **Shopify App Pricing** (plans defined in the app submission form, Shopify hosts the plan-selection page and handles trials/proration/upgrades — no Billing API code needed; docs confirm up to 8 public + 15 private plans, test on a dev store before publishing).
 
-Not yet built in-app (Shopify App Pricing plans are configured in the Dev Dashboard UI, not code) — this table is the source of truth for whoever sets that up.
+**Free tier: recommend NO permanent free plan at launch.** Reasoning: (a) target buyers (bullion/by-weight) treat repricing as must-have infrastructure — a 14-day trial is enough to prove it, they don't need free-forever to be convinced; (b) a free plan attracts exactly the skeptical fashion-jewelry segment from validation — support load without revenue, and support time is the app's real cost; (c) every all-free competitor in the niche is an abandoned side project (competition analysis); (d) dev/partner stores get apps free automatically anyway. The one genuine upside forgone: a free plan earns the "Free plan available" badge in App Store search results, which helps discovery — revisit if install volume is weak after launch. Private plans (15 allowed) cover the Chris case: give design partners a free-for-life private plan without a public free tier.
+
+## Full code audit performed (2026-07-18) — report only, fixes pending
+
+Complete findings in [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md). Headlines: 4 HIGH (rate-cache loop that can burn the entire API quota invisibly; scheduler likely fails on expired offline tokens when app sits idle — token confirmed expired in DB during audit; preview/apply rate drift means merchant can approve X and get Y; hardcoded SQLite path = guaranteed data loss on container hosting without a volume), 7 MEDIUM, 8 LOW. Nothing fixed yet per user instruction — fix order should be H1→H4 before any production deploy, H3 before Chris demo.
 
 ## Is this ready to show Chris? (honest answer)
 
