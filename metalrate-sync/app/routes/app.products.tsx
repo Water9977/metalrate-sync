@@ -3,9 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Link, useLoaderData, useFetcher, useSearchParams } from "react-router";
-import { useEffect } from "react";
-import { useAppBridge } from "@shopify/app-bridge-react";
+import { useNavigate, useLoaderData, useFetcher, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
@@ -244,19 +242,18 @@ export default function Products() {
   const { products, formulas, configByVariantId, search } =
     useLoaderData<typeof loader>();
   const [, setSearchParams] = useSearchParams();
-  const shopify = useAppBridge();
-
-  useEffect(() => {
-    // no-op: reserved for future toast wiring per-row
-  }, [shopify]);
+  const navigate = useNavigate();
 
   return (
     <s-page heading="Products" inlineSize="large">
-      <Link to="/app/products/import" viewTransition>
-        <s-button slot="primary-action" variant="primary" icon="import">
-          Bulk import
-        </s-button>
-      </Link>
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        icon="import"
+        onClick={() => navigate("/app/products/import")}
+      >
+        Bulk import
+      </s-button>
       <s-section>
         <s-stack direction="block" gap="base">
           {formulas.length === 0 && (

@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Link, useLoaderData, useFetcher } from "react-router";
+import { useNavigate, useLoaderData, useFetcher } from "react-router";
 import { useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -62,6 +62,7 @@ export default function SyncPreview() {
   const { rows, rates, error } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
+  const navigate = useNavigate();
   const syncing = fetcher.state !== "idle";
 
   const willUpdate = rows.filter((row) => row.status === "will_update");
@@ -92,10 +93,7 @@ export default function SyncPreview() {
         <s-section>
           <s-banner tone="critical" heading="Preview unavailable">
             {error} — check your rate source in{" "}
-            <Link to="/app/settings" viewTransition>
-              <s-link>Settings</s-link>
-            </Link>
-            .
+            <s-link href="/app/settings">Settings</s-link>.
           </s-banner>
         </s-section>
       )}
@@ -125,10 +123,7 @@ export default function SyncPreview() {
             <s-section>
               <s-banner tone="success" heading="Sync finished">
                 Prices were pushed to Shopify.{" "}
-                <Link to="/app/history" viewTransition>
-                  <s-link>See the full run report</s-link>
-                </Link>
-                .
+                <s-link href="/app/history">See the full run report</s-link>.
               </s-banner>
             </s-section>
           )}
@@ -145,10 +140,7 @@ export default function SyncPreview() {
             <s-section>
               <s-banner tone="critical" heading={`${missing.length} variants missing data`}>
                 These variants need a weight and an active formula on the{" "}
-                <Link to="/app/products" viewTransition>
-                  <s-link>Products page</s-link>
-                </Link>
-                .
+                <s-link href="/app/products">Products page</s-link>.
               </s-banner>
             </s-section>
           )}
@@ -162,9 +154,12 @@ export default function SyncPreview() {
                   then come back here to preview the repricing before anything
                   touches your store.
                 </s-paragraph>
-                <Link to="/app/products" viewTransition>
-                  <s-button variant="primary">Go to Products</s-button>
-                </Link>
+                <s-button
+                  variant="primary"
+                  onClick={() => navigate("/app/products")}
+                >
+                  Go to Products
+                </s-button>
               </s-stack>
             ) : (
               <s-table variant="auto">

@@ -1,5 +1,5 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Link, useLoaderData } from "react-router";
+import { useNavigate, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
@@ -61,6 +61,7 @@ const RUN_STATUS_TONE: Record<string, "success" | "critical" | "warning" | "info
 export default function Dashboard() {
   const { settings, formulaCount, variantCount, rates, ratesError, lastRun } =
     useLoaderData<typeof loader>();
+  const navigate = useNavigate();
 
   const setupSteps = [
     {
@@ -89,11 +90,13 @@ export default function Dashboard() {
 
   return (
     <s-page heading="MetalRate Sync">
-      <Link to="/app/sync" style={{ textDecoration: "none" }} viewTransition>
-        <s-button slot="primary-action" variant="primary">
-          Preview &amp; sync prices
-        </s-button>
-      </Link>
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        onClick={() => navigate("/app/sync")}
+      >
+        Preview &amp; sync prices
+      </s-button>
 
       {!setupComplete && (
         <s-section heading={`Setup guide (${doneCount}/${setupSteps.length})`}>
@@ -112,9 +115,7 @@ export default function Dashboard() {
                 {step.done ? (
                   <s-text color="subdued">{step.label}</s-text>
                 ) : (
-                  <Link to={step.href} viewTransition>
-                    <s-link>{step.label}</s-link>
-                  </Link>
+                  <s-link href={step.href}>{step.label}</s-link>
                 )}
               </s-stack>
             ))}
@@ -160,10 +161,7 @@ export default function Dashboard() {
         {settings.rateProvider === "mock" && !ratesError && (
           <s-banner tone="info" heading="Demo rates active">
             These are simulated rates so you can explore the app. Pick a real
-            rate source in{" "}
-            <Link to="/app/settings" viewTransition>
-              <s-link>Settings</s-link>
-            </Link>{" "}
+            rate source in <s-link href="/app/settings">Settings</s-link>{" "}
             before syncing live prices.
           </s-banner>
         )}
@@ -184,9 +182,7 @@ export default function Dashboard() {
               {lastRun.updatedCount} updated · {lastRun.skippedCount} skipped ·{" "}
               {lastRun.failedCount} failed
             </s-paragraph>
-            <Link to="/app/history" viewTransition>
-              <s-link>View full history</s-link>
-            </Link>
+            <s-link href="/app/history">View full history</s-link>
           </s-stack>
         ) : (
           <s-paragraph>

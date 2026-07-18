@@ -3,8 +3,8 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Link, useLoaderData, useFetcher } from "react-router";
-import { useEffect } from "react";
+import { useNavigate, useLoaderData, useFetcher } from "react-router";
+import { useEffect, useState } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -37,8 +37,10 @@ export default function BulkImport() {
   const { formulaCount } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
+  const navigate = useNavigate();
   const importing = fetcher.state !== "idle";
   const summary = fetcher.data?.summary as ImportSummary | null | undefined;
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.message) {
@@ -46,23 +48,50 @@ export default function BulkImport() {
     }
   }, [fetcher.state, fetcher.data, shopify]);
 
+  // Download via an authenticated fetch (App Bridge attaches the session
+  // token to same-origin requests automatically) then save the blob
+  // client-side. Opening the resource route in a new tab would land
+  // outside the embedded session and fail auth.
+  const downloadCsv = async () => {
+    setDownloading(true);
+    try {
+      const response = await fetch("/app/products/export-csv");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "metalrate-sync-products.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      shopify.toast.show(
+        `Couldn't download CSV: ${error instanceof Error ? error.message : "unknown error"}`,
+        { isError: true },
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <s-page heading="Bulk import" inlineSize="large">
-      <Link to="/app/products" viewTransition>
-        <s-button slot="primary-action" variant="tertiary">
-          Back to Products
-        </s-button>
-      </Link>
+      <s-button
+        slot="primary-action"
+        variant="tertiary"
+        onClick={() => navigate("/app/products")}
+      >
+        Back to Products
+      </s-button>
 
       {formulaCount === 0 && (
         <s-section>
           <s-banner tone="warning" heading="Create a formula first">
             Import can set weights and formula assignments in one pass, but
             you need at least one formula to assign. Go to{" "}
-            <Link to="/app/formulas" viewTransition>
-              <s-link>Formulas</s-link>
-            </Link>{" "}
-            first.
+            <s-link href="/app/formulas">Formulas</s-link> first.
           </s-banner>
         </s-section>
       )}
@@ -74,11 +103,14 @@ export default function BulkImport() {
             product name, current price, and any weight/formula already set.
             Edit it in Excel or Google Sheets, then upload it below.
           </s-paragraph>
-          <a href="/app/products/export-csv" target="_blank" rel="noreferrer">
-            <s-button variant="secondary" icon="import">
-              Download current products as CSV
-            </s-button>
-          </a>
+          <s-button
+            variant="secondary"
+            icon="import"
+            onClick={downloadCsv}
+            {...(downloading ? { loading: true } : {})}
+          >
+            Download current products as CSV
+          </s-button>
         </s-stack>
       </s-section>
 
@@ -156,9 +188,12 @@ export default function BulkImport() {
               </s-box>
             )}
 
-            <Link to="/app/products" viewTransition>
-              <s-button variant="primary">View in Products</s-button>
-            </Link>
+            <s-button
+              variant="primary"
+              onClick={() => navigate("/app/products")}
+            >
+              View in Products
+            </s-button>
           </s-stack>
         </s-section>
       )}
