@@ -78,6 +78,33 @@ A merchant test (50g, 22K, zero markup formula) showed $5,867.99 while a casual 
 
 The MCX/IBJA-specific roadmap item (India domestic rates including import duty + GST, structurally different from international spot) is still separate and still open — these are city-level *international* gold/silver quotes from the same MetalPriceAPI feed, not the same thing as MCX/IBJA board rates.
 
+## Production rate-fetch decision (2026-07-18, from user)
+
+When this ships to real customers: **one app-owned MetalPriceAPI key** (not per-merchant BYO keys), prices updated **twice a day** on a fixed schedule. The per-merchant key field in Settings is a development convenience and gets removed/hidden before launch. Cost math: rates are global, so with central caching, 2 fetches/day serves every merchant on the base tier; each extra (city × currency) combo adds 2 calls/day. Even 100 merchants across 10 combos ≈ 600 calls/month → MetalPriceAPI's $12/mo Basic plan (10k req) covers it with huge headroom. API cost is effectively zero per merchant; price on value, not cost.
+
+## Bulk import "does nothing" — root cause #2 found and fixed (2026-07-18)
+
+The nav fix (commit 7705300) was real but a second, independent bug sat behind it: with flat-file routing, `app.products.import.tsx` is a **child route** of `app.products.tsx`, and the Products page has no `<Outlet/>`. Clicking Bulk import genuinely navigated — URL changed — but the import page rendered into a slot that doesn't exist, so the screen stayed pixel-identical. Renamed to `app.products_.import.tsx` (trailing underscore escapes nesting, URL unchanged). Rule for future routes: any new page under an existing page's path segment needs the `_` escape unless the parent deliberately renders an `<Outlet/>`.
+
+## UX pass (2026-07-18)
+
+- **Settings now only shows what's relevant**: API key + India city picker appear only when provider = MetalPriceAPI; manual rate entry appears only when provider = Manual. Provider dropdown drives visibility client-side.
+- **Setup guide became a real walkthrough**: numbered colored steps, plain-English description under each ("A formula is your pricing recipe: metal + purity + your charges"), done-steps collapse to a checkmark. Plus a permanent "How it works" aside on the dashboard for returning users.
+- **Formula delete is now two-click** (arm → "Confirm delete?") instead of instant on a misclick.
+- Formula editing shipped earlier same day (edit button + pre-filled modal).
+
+## Pricing decision (proposed 2026-07-18, needs user sign-off)
+
+Anchors: JewelSync $9.99–14.99, GPE $15.99–39.99, Gold Feed $40 (the one Chris pays for and hates), Chris's stated willingness $30–35. API cost ~zero per merchant (see above). Proposal — two paid tiers plus trial, keep it simple:
+
+| Plan | Price | Limits |
+|---|---|---|
+| Free trial | 7 days | full features |
+| **Starter** | **$14.99/mo** | up to 1,000 variants, twice-daily auto-sync, all formula features, CSV import |
+| **Growth** | **$29.99/mo** | up to 25,000 variants, city rates (when on paid data plan), priority support, future: eBay/POS |
+
+Logic: Starter undercuts GPE's entry and matches JewelSync's ceiling while offering more (import, preview, audit trail). Growth sits $10 under Gold Feed with a directly better product — that's the Chris-switch pitch. Don't go cheaper: every 5-star review in this niche is support-driven, and support time is the real cost.
+
 ## Is this ready to show Chris? (honest answer)
 
 **Ready to screen-share as a live proof-of-concept — not ready to hand him for real use on his real store yet.** Be clear about that distinction with him. Specifically:

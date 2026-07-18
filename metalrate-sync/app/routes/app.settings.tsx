@@ -4,7 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { useLoaderData, useFetcher } from "react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -94,6 +94,10 @@ export default function Settings() {
   const fetcher = useFetcher<typeof action>();
   const manualFetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
+  // Mirrors the provider dropdown so only the fields relevant to the chosen
+  // provider are visible — the API key and city picker mean nothing on
+  // manual/demo, and the manual-rates table means nothing on live API.
+  const [provider, setProvider] = useState(settings.rateProvider);
 
   useEffect(() => {
     const data = fetcher.data ?? manualFetcher.data;
@@ -111,37 +115,44 @@ export default function Settings() {
             <s-select
               label="Provider"
               name="rateProvider"
-              value={settings.rateProvider}
+              value={provider}
               details="Where live metal prices come from"
+              onChange={(event: Event) =>
+                setProvider((event.target as HTMLSelectElement).value)
+              }
             >
               <s-option value="mock">Demo rates (testing only)</s-option>
               <s-option value="metalpriceapi">MetalPriceAPI (live)</s-option>
               <s-option value="manual">Manual entry (your own board rate)</s-option>
             </s-select>
 
-            <s-text-field
-              label="MetalPriceAPI key"
-              name="rateApiKey"
-              placeholder={
-                settings.hasApiKey ? "•••••••• (saved — leave blank to keep)" : "Paste API key"
-              }
-              details="Only needed for the MetalPriceAPI provider. Get a free key at metalpriceapi.com."
-            ></s-text-field>
+            {provider === "metalpriceapi" && (
+              <>
+                <s-text-field
+                  label="MetalPriceAPI key"
+                  name="rateApiKey"
+                  placeholder={
+                    settings.hasApiKey ? "•••••••• (saved — leave blank to keep)" : "Paste API key"
+                  }
+                  details="Get a free key at metalpriceapi.com."
+                ></s-text-field>
 
-            <s-select
-              label="India city rate (optional)"
-              name="rateCity"
-              value={settings.rateCity}
-              details="Use a city-specific gold/silver rate instead of the global spot price. Confirmed available on MetalPriceAPI but requires a paid plan (their free tier returns a 'requires a paid plan' error for these) — leave on Global if you're on the free tier. Only affects gold and silver; platinum and palladium always use the global rate since no city data exists for them."
-            >
-              <s-option value="">Global (no city)</s-option>
-              {INDIA_RATE_CITIES.map((city) => (
-                <s-option key={city.code} value={city.code}>
-                  {city.label}
-                  {!city.hasSilver ? " (gold only)" : ""}
-                </s-option>
-              ))}
-            </s-select>
+                <s-select
+                  label="India city rate (optional)"
+                  name="rateCity"
+                  value={settings.rateCity}
+                  details="Use a city-specific gold/silver rate instead of the global spot price. Needs a paid MetalPriceAPI plan — leave on Global if you're on the free tier. Platinum and palladium always use the global rate (no city data exists for them)."
+                >
+                  <s-option value="">Global (no city)</s-option>
+                  {INDIA_RATE_CITIES.map((city) => (
+                    <s-option key={city.code} value={city.code}>
+                      {city.label}
+                      {!city.hasSilver ? " (gold only)" : ""}
+                    </s-option>
+                  ))}
+                </s-select>
+              </>
+            )}
 
             <s-grid gridTemplateColumns="1fr 1fr" gap="base">
               <s-text-field
@@ -186,6 +197,7 @@ export default function Settings() {
         </fetcher.Form>
       </s-section>
 
+      {provider === "manual" && (
       <s-section heading="Manual rates (per gram)">
         <manualFetcher.Form method="POST">
           <input type="hidden" name="intent" value="saveManualRates" />
@@ -216,6 +228,7 @@ export default function Settings() {
           </s-stack>
         </manualFetcher.Form>
       </s-section>
+      )}
 
       <s-section slot="aside" heading="About scheduling">
         <s-paragraph>

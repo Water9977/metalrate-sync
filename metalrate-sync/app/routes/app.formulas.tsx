@@ -90,6 +90,9 @@ export default function Formulas() {
   const formRef = useRef<HTMLFormElement>(null);
   const saving = fetcher.state !== "idle";
   const [editingFormula, setEditingFormula] = useState<Formula | null>(null);
+  // Two-click delete: first click arms, second confirms. Cheap insurance
+  // against one misclick destroying a formula that variants depend on.
+  const [deleteArmedId, setDeleteArmedId] = useState<number | null>(null);
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.message) {
@@ -218,18 +221,30 @@ export default function Formulas() {
                         accessibilityLabel={`Edit ${formula.name}`}
                         onClick={() => openEditFormula(formula)}
                       ></s-button>
-                      <s-button
-                        variant="tertiary"
-                        tone="critical"
-                        icon="delete"
-                        accessibilityLabel={`Delete ${formula.name}`}
-                        onClick={() =>
-                          fetcher.submit(
-                            { intent: "delete", id: String(formula.id) },
-                            { method: "POST" },
-                          )
-                        }
-                      ></s-button>
+                      {deleteArmedId === formula.id ? (
+                        <s-button
+                          variant="primary"
+                          tone="critical"
+                          accessibilityLabel={`Confirm delete ${formula.name}`}
+                          onClick={() => {
+                            setDeleteArmedId(null);
+                            fetcher.submit(
+                              { intent: "delete", id: String(formula.id) },
+                              { method: "POST" },
+                            );
+                          }}
+                        >
+                          Confirm delete?
+                        </s-button>
+                      ) : (
+                        <s-button
+                          variant="tertiary"
+                          tone="critical"
+                          icon="delete"
+                          accessibilityLabel={`Delete ${formula.name}`}
+                          onClick={() => setDeleteArmedId(formula.id)}
+                        ></s-button>
+                      )}
                     </s-stack>
                   </s-table-cell>
                 </s-table-row>

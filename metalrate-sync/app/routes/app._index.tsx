@@ -66,22 +66,30 @@ export default function Dashboard() {
   const setupSteps = [
     {
       done: settings.rateProvider !== "mock",
-      label: "Choose a live rate source in Settings",
+      label: "Choose your rate source",
+      description:
+        "Settings → pick where live gold/silver prices come from. Demo rates work for exploring, switch to a live source before real syncing.",
       href: "/app/settings",
     },
     {
       done: formulaCount > 0,
-      label: "Create your first pricing formula",
+      label: "Create a pricing formula",
+      description:
+        "A formula is your pricing recipe: metal + purity + your charges. Example: 22K gold + 10% making charge + 3% tax. Make one per product type.",
       href: "/app/formulas",
     },
     {
       done: variantCount > 0,
-      label: "Assign products and metal weights",
+      label: "Tell us what your products weigh",
+      description:
+        "Pick a product, enter its metal weight, choose which formula prices it. Lots of products? Use Bulk import to do it from a spreadsheet.",
       href: "/app/products",
     },
     {
       done: lastRun != null,
-      label: "Preview and run your first price sync",
+      label: "Preview, then sync",
+      description:
+        "See every price change before it happens — nothing touches your store until you click Apply.",
       href: "/app/sync",
     },
   ];
@@ -99,25 +107,40 @@ export default function Dashboard() {
       </s-button>
 
       {!setupComplete && (
-        <s-section heading={`Setup guide (${doneCount}/${setupSteps.length})`}>
+        <s-section heading={`Get set up (${doneCount}/${setupSteps.length} done)`}>
           <s-stack direction="block" gap="base">
-            {setupSteps.map((step) => (
-              <s-stack
+            <s-paragraph>
+              <s-text color="subdued">
+                Four steps, about five minutes. Your store's prices are never
+                touched until you preview and approve a sync yourself.
+              </s-text>
+            </s-paragraph>
+            {setupSteps.map((step, index) => (
+              <s-box
                 key={step.label}
-                direction="inline"
-                gap="base"
-                alignItems="center"
+                padding="base"
+                borderWidth="base"
+                borderRadius="base"
+                background={step.done ? "subdued" : "base"}
               >
-                <s-icon
-                  type={step.done ? "check-circle" : "circle-dashed"}
-                  tone={step.done ? "success" : "neutral"}
-                ></s-icon>
-                {step.done ? (
-                  <s-text color="subdued">{step.label}</s-text>
-                ) : (
-                  <s-link href={step.href}>{step.label}</s-link>
-                )}
-              </s-stack>
+                <s-stack direction="inline" gap="base" alignItems="center">
+                  <s-badge tone={step.done ? "success" : "info"}>
+                    {step.done ? "✓" : String(index + 1)}
+                  </s-badge>
+                  <s-stack direction="block" gap="small-300">
+                    {step.done ? (
+                      <s-text color="subdued">{step.label}</s-text>
+                    ) : (
+                      <s-link href={step.href}>
+                        <s-text type="strong">{step.label}</s-text>
+                      </s-link>
+                    )}
+                    {!step.done && (
+                      <s-text color="subdued">{step.description}</s-text>
+                    )}
+                  </s-stack>
+                </s-stack>
+              </s-box>
             ))}
           </s-stack>
         </s-section>
@@ -210,6 +233,22 @@ export default function Dashboard() {
             </s-text>{" "}
             <s-text color="subdued">sync schedule</s-text>
           </s-paragraph>
+        </s-stack>
+      </s-section>
+
+      <s-section slot="aside" heading="How it works">
+        <s-stack direction="block" gap="base">
+          <s-paragraph>
+            <s-text color="subdued">
+              Your price = weight × purity × live rate, plus your making
+              charges, markup and tax. When the metal market moves, Preview
+              &amp; Sync shows what every price would become — you approve it
+              before anything changes in your store. Every sync is logged in
+              History.
+            </s-text>
+          </s-paragraph>
+          <s-link href="/app/formulas">Manage formulas</s-link>
+          <s-link href="/app/products/import">Bulk import from spreadsheet</s-link>
         </s-stack>
       </s-section>
     </s-page>
