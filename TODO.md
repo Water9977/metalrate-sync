@@ -120,9 +120,10 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 **7. Once approved:** Chris (and anyone else) installs via the normal App Store trial. Give Chris a private free plan right after (Dev Dashboard → Pricing) — done, no further steps.
 
 **Domain / SEO:**
-- [x] Domain chosen: **metalratesync.com** (purchased 2026-07-19) — exact match to the app/listing name, the pick recommended for this niche (App Store search matters more than Google SEO here; brand consistency across listing/support-email/domain wins over a keyword-stuffed alternative).
-- [ ] Build the marketing/pricing site on it (later).
-- [ ] Point the privacy policy + support page at it before drafting the App Store listing form.
+- [x] Domain chosen: **metalratesync.com** (purchased 2026-07-19).
+- [x] Marketing site built (2026-07-19 night) — Next.js in [website/](website/), dark premium design matching brand assets: hero with feature render, 4-metal ticker signature, trust pillars, 6 features, 5 real app screenshots, $30/$50 pricing, dealer FAQ, contact (metalratesync@gmail.com), /privacy + /terms, full SEO (per-route metadata + canonicals, OG/Twitter cards, SoftwareApplication JSON-LD, sitemap.xml, robots.txt). Static build clean, visually verified in browser.
+- [ ] **Deploy to Vercel + connect domain (needs your Vercel login, ~10 min):** vercel.com → New Project → import the GitHub repo → set Root Directory to `website` → Deploy → Project Settings → Domains → add metalratesync.com (Vercel shows the exact DNS records to add at your registrar).
+- [ ] Privacy policy URL for the App Store form = `https://metalratesync.com/privacy` once deployed — page content already written and live in the site.
 
 **Credential hygiene (do before real merchants, not urgent today):**
 - [ ] Rotate all four credentials exposed in chat/screenshots during setup: MetalPriceAPI key, `SHOPIFY_API_SECRET`, the Railway Postgres password (visible in a 2026-07-19 dashboard screenshot), and treat `SHOPIFY_API_KEY` as public (it is by design). Rotate → update Railway variables + local `.env` → redeploy.
