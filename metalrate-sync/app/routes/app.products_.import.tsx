@@ -28,6 +28,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, message: "Choose a CSV file first.", summary: null };
   }
+  // M5 fix: file.text() had no size cap, so a huge upload could OOM the
+  // server. 10MB comfortably covers even a 50k-row catalog CSV.
+  const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+  if (file.size > MAX_IMPORT_BYTES) {
+    return {
+      ok: false,
+      message: `That file is ${(file.size / (1024 * 1024)).toFixed(1)}MB — the limit is 10MB. Split it into smaller batches.`,
+      summary: null,
+    };
+  }
 
   const text = await file.text();
   return runImport(shop, admin, text);

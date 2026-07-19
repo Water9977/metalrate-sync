@@ -9,6 +9,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { Prisma } from "@prisma/client";
 import {
   METAL_LABELS,
   METAL_TONE,
@@ -70,8 +71,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
       return { ok: true, message: id ? "Formula updated" : "Formula created" };
     } catch (error) {
+      // L3 fix: matching on error.message text was brittle -- Prisma's
+      // message wording isn't a stable API across versions. error.code is.
       const message =
-        error instanceof Error && error.message.includes("Unique constraint")
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
           ? "A formula with that name already exists"
           : "Could not save formula";
       return { ok: false, message };

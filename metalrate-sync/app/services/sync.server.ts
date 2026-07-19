@@ -138,16 +138,48 @@ const BULK_UPDATE_MUTATION = `#graphql
   }
 `;
 
+/**
+ * Scheduled/automatic syncs recompute live rates at execution time — that's
+ * the correct behavior for them, there's no prior human approval to honor.
+ */
 export async function executeSync(
   admin: AdminClient,
   shop: string,
   trigger: "manual" | "scheduled" = "manual",
 ): Promise<number> {
   const { rows, rates } = await buildPreview(shop);
+  return runBatchedApply(admin, shop, trigger, rows, rates);
+}
+
+/**
+ * Manual "Apply" from the Preview & Sync screen — applies exactly the rows
+ * and rates the merchant was shown, never recomputed. Fixes the trust bug
+ * where a rate-cache refresh between preview and clicking Apply could push
+ * different prices than the ones approved. Staleness is enforced by the
+ * caller (the route checks rate freshness before calling this).
+ */
+export async function applyPreviewedRows(
+  admin: AdminClient,
+  shop: string,
+  rows: PreviewRow[],
+  rates: MetalRate[],
+): Promise<number> {
+  return runBatchedApply(admin, shop, "manual", rows, rates);
+}
+
+async function runBatchedApply(
+  admin: AdminClient,
+  shop: string,
+  trigger: "manual" | "scheduled",
+  rows: PreviewRow[],
+  rates: MetalRate[],
+): Promise<number> {
   const actionable = rows.filter((row) => row.status === "will_update");
-  const skipped = rows.filter(
-    (row) => row.status === "stop_loss" || row.status === "no_change",
-  );
+  // M2 fix: skippedCount must cover every non-actionable row, including
+  // missing_data (no weight/formula) -- it used to only count stop_loss +
+  // no_change, so updated + skipped + failed fell short of totalItems
+  // whenever any variant lacked data, breaking the audit trail's own math.
+  const skipped = rows.filter((row) => row.status !== "will_update");
 
   const run = await prisma.syncRun.create({
     data: {

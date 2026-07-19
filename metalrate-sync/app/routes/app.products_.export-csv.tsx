@@ -8,6 +8,14 @@ import { toCsv } from "../services/csv.server";
  * Resource route (no UI) — lets a merchant download their catalog as a CSV
  * pre-filled with current weight/formula assignments, ready to edit in
  * Excel/Sheets and re-upload via Bulk Import.
+ *
+ * L5 fix: renamed from the dotted app.products.export-csv.tsx to the
+ * products_ (trailing-underscore) convention already used by
+ * app.products_.import.tsx. The dotted name only worked because this is a
+ * resource route with no component to render under app.products.tsx's
+ * layout — the same dotted name on any route with a component reproduces
+ * the earlier bulk-import nesting bug. Same URL either way (/app/products/
+ * export-csv); this just removes the landmine for the next route added here.
  */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);

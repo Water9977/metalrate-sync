@@ -43,6 +43,14 @@ export async function runImport(
     return { ok: false, message: "No data rows found in that CSV.", summary: null };
   }
 
+  // M5 fix: duplicate SKU rows each used to upsert independently and each
+  // increment summary.updated, so a CSV with the same SKU twice over-
+  // reported how many variants actually changed. Dedupe first, keeping
+  // the last occurrence — the same row that would "win" in the DB anyway
+  // since upserts for the same SKU overwrite each other in row order.
+  const dedupedBySku = new Map(rows.map((row) => [row.sku, row]));
+  const dedupedRows = Array.from(dedupedBySku.values());
+
   const [{ bySku, truncated }, formulas] = await Promise.all([
     fetchCatalogBySku(admin, shop),
     prisma.pricingFormula.findMany({ where: { shop, active: true } }),
@@ -59,7 +67,7 @@ export async function runImport(
     truncated,
   };
 
-  const matchedVariantIds = rows
+  const matchedVariantIds = dedupedRows
     .map((row) => bySku.get(row.sku)?.variantId)
     .filter((id): id is string => Boolean(id));
   const existingConfigs = await prisma.variantConfig.findMany({
@@ -69,7 +77,7 @@ export async function runImport(
     existingConfigs.map((config) => [config.variantId, config]),
   );
 
-  for (const row of rows) {
+  for (const row of dedupedRows) {
     const variant: CatalogVariant | undefined = bySku.get(row.sku);
     if (!variant) {
       summary.notFound.push(row.sku);

@@ -30,11 +30,28 @@ export async function getRates(shop: string): Promise<MetalRate[]> {
   const cached = await prisma.metalRateCache.findMany({
     where: { shop, currency: settings.baseCurrency },
   });
+  const cachedByMetal = new Map(cached.map((row) => [row.metal, row]));
 
   const ttlMs = settings.rateTtlMinutes * 60 * 1000;
-  const isFresh =
-    cached.length >= SUPPORTED_METALS.length &&
-    cached.every((rate) => Date.now() - rate.fetchedAt.getTime() < ttlMs);
+  const now = Date.now();
+
+  // H1 fix: gate freshness on the MOST RECENT successful update, not on
+  // every single metal individually passing. The old "every metal must be
+  // fresh" check meant one metal the provider chronically can't supply (a
+  // partial outage, an unsupported city+metal combo) made isFresh false
+  // forever, forcing a live API call on every single page load -- on a
+  // 100-request/month free tier that burns the whole quota in a day. Using
+  // "most recent" means a normal partial response (3 of 4 metals updated)
+  // still counts as a fresh attempt and throttles the next call to once
+  // per TTL, same as a full response would -- the chronically-missing
+  // metal just keeps serving its last known value in between, exactly like
+  // the full-outage stale-cache fallback below already does.
+  const hasAllMetals = SUPPORTED_METALS.every((metal) => cachedByMetal.has(metal));
+  const mostRecentFetch =
+    cached.length > 0
+      ? Math.max(...cached.map((row) => row.fetchedAt.getTime()))
+      : 0;
+  const isFresh = hasAllMetals && now - mostRecentFetch < ttlMs;
 
   if (isFresh) {
     return cached.map(toMetalRate);
@@ -66,7 +83,15 @@ export async function getRates(shop: string): Promise<MetalRate[]> {
         create: { shop, ...rate },
       });
     }
-    return fresh;
+    // Merge: a metal the provider didn't return this round falls back to
+    // its last cached value instead of vanishing from the result entirely.
+    const freshByMetal = new Map(fresh.map((rate) => [rate.metal, rate]));
+    return SUPPORTED_METALS.flatMap((metal) => {
+      const freshRate = freshByMetal.get(metal);
+      if (freshRate) return [freshRate];
+      const cachedRow = cachedByMetal.get(metal);
+      return cachedRow ? [toMetalRate(cachedRow)] : [];
+    });
   } catch (error) {
     // Provider down: serve stale cache rather than blocking the merchant.
     if (cached.length > 0) return cached.map(toMetalRate);

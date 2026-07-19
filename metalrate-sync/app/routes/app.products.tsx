@@ -4,6 +4,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { useNavigate, useLoaderData, useFetcher, useSearchParams } from "react-router";
+import { useEffect, useRef, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
@@ -160,8 +161,20 @@ function VariantRow({
   formulas: Array<{ id: number; name: string }>;
 }) {
   const fetcher = useFetcher<typeof action>();
+  const removeFetcher = useFetcher<typeof action>();
   const saving = fetcher.state !== "idle";
   const tracked = config != null && config.enabled;
+
+  // M3 fix: the weight field used to always display the stored value in
+  // grams while a separate unit dropdown was user-set independently — pick
+  // Tola, glance at the still-grams number, hit Save, and that number gets
+  // interpreted as tola (an 11.66x price error). Making unit+value
+  // controlled state and converting the displayed number when the unit
+  // changes means what's on screen always matches what "unit" says it is.
+  const [unit, setUnit] = useState("g");
+  const [weightValue, setWeightValue] = useState(
+    config ? String(config.weightGrams) : "",
+  );
 
   return (
     <s-table-row>
@@ -191,18 +204,31 @@ function VariantRow({
               name="weightInput"
               min={0}
               placeholder="0.00"
-              value={config ? String(config.weightGrams) : ""}
+              value={weightValue}
+              onChange={(event: Event) =>
+                setWeightValue((event.target as HTMLInputElement).value)
+              }
             ></s-number-field>
             <s-select
               label="Unit"
               labelAccessibilityVisibility="exclusive"
               name="weightUnit"
-              value="g"
-              details="Existing values are always shown in grams. Pick a different unit to type a new value in that unit instead."
+              value={unit}
+              details="Switching units converts the number shown so it always matches this unit."
+              onChange={(event: Event) => {
+                const newUnit = (event.target as HTMLSelectElement).value;
+                setWeightValue((prev) => {
+                  const grams = prev ? Number(prev) * gramsPerUnit(unit) : NaN;
+                  return Number.isFinite(grams)
+                    ? String(grams / gramsPerUnit(newUnit))
+                    : prev;
+                });
+                setUnit(newUnit);
+              }}
             >
-              {WEIGHT_UNITS.map((unit) => (
-                <s-option key={unit.code} value={unit.code}>
-                  {unit.label}
+              {WEIGHT_UNITS.map((weightUnit) => (
+                <s-option key={weightUnit.code} value={weightUnit.code}>
+                  {weightUnit.label}
                 </s-option>
               ))}
             </s-select>
@@ -230,9 +256,25 @@ function VariantRow({
         </fetcher.Form>
       </s-table-cell>
       <s-table-cell>
-        <s-badge tone={tracked ? "success" : "neutral"}>
-          {tracked ? "Tracked" : "Not tracked"}
-        </s-badge>
+        <s-stack direction="inline" gap="small-300" alignItems="center">
+          <s-badge tone={tracked ? "success" : "neutral"}>
+            {tracked ? "Tracked" : "Not tracked"}
+          </s-badge>
+          {config != null && (
+            <removeFetcher.Form method="POST">
+              <input type="hidden" name="intent" value="removeVariant" />
+              <input type="hidden" name="variantId" value={variant.id} />
+              <s-button
+                type="submit"
+                variant="tertiary"
+                tone="critical"
+                {...(removeFetcher.state !== "idle" ? { loading: true } : {})}
+              >
+                Remove
+              </s-button>
+            </removeFetcher.Form>
+          )}
+        </s-stack>
       </s-table-cell>
     </s-table-row>
   );
@@ -243,6 +285,24 @@ export default function Products() {
     useLoaderData<typeof loader>();
   const [, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // M4 fix: onChange used to call setSearchParams directly, so every
+  // keystroke re-ran the loader (a Shopify GraphQL products query) —
+  // typing a full search term could fire a dozen+ Admin API calls. Keep
+  // the input's own display value in local state and only push it into
+  // the URL (which triggers the actual query) after typing pauses.
+  const [searchInput, setSearchInput] = useState(search);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   return (
     <s-page heading="Products" inlineSize="large">
@@ -266,10 +326,14 @@ export default function Products() {
             label="Search products"
             labelAccessibilityVisibility="exclusive"
             placeholder="Search products…"
-            value={search}
+            value={searchInput}
             onChange={(event: Event) => {
-              const target = event.target as HTMLInputElement;
-              setSearchParams(target.value ? { q: target.value } : {});
+              const value = (event.target as HTMLInputElement).value;
+              setSearchInput(value);
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => {
+                setSearchParams(value ? { q: value } : {});
+              }, 400);
             }}
           ></s-search-field>
 

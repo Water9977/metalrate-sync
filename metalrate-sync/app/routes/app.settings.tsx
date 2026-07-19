@@ -26,6 +26,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       rateTtlMinutes: settings.rateTtlMinutes,
       scheduleEnabled: settings.scheduleEnabled,
       scheduleInterval: settings.scheduleInterval,
+      scheduleFailureCount: settings.scheduleFailureCount,
+      lastScheduleError: settings.lastScheduleError,
     },
     manualRates: Object.fromEntries(
       manualRates.map((rate) => [rate.metal, rate.pricePerGram]),
@@ -40,15 +42,23 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const intent = String(form.get("intent"));
 
   if (intent === "saveSettings") {
+    const providerInput = String(form.get("rateProvider") ?? "mock");
     const apiKeyInput = String(form.get("rateApiKey") ?? "").trim();
     const rateCityInput = String(form.get("rateCity") ?? "").trim();
     await prisma.shopSettings.upsert({
       where: { shop },
       update: {
-        rateProvider: String(form.get("rateProvider") ?? "mock"),
+        rateProvider: providerInput,
         // Keep the stored key when the field is left blank.
         ...(apiKeyInput ? { rateApiKey: apiKeyInput } : {}),
-        rateCity: rateCityInput || null,
+        // M1 fix: the city field only renders when provider is
+        // metalpriceapi, so saving on manual/demo submits no rateCity at
+        // all -- that used to be read as "clear the city" and silently
+        // wipe the choice for when the merchant switches back. Only
+        // touch rateCity when the field was actually on the form.
+        ...(providerInput === "metalpriceapi"
+          ? { rateCity: rateCityInput || null }
+          : {}),
         baseCurrency: String(form.get("baseCurrency") ?? "USD").toUpperCase(),
         rateTtlMinutes: Math.max(1, Number(form.get("rateTtlMinutes") ?? 15)),
         scheduleEnabled: form.get("scheduleEnabled") === "on",
@@ -231,6 +241,22 @@ export default function Settings() {
       )}
 
       <s-section slot="aside" heading="About scheduling">
+        {!settings.scheduleEnabled && settings.lastScheduleError && (
+          <s-banner tone="warning" heading="Automatic sync turned itself off">
+            After several failed attempts in a row, scheduling was
+            automatically disabled to stop retrying a broken connection.
+            Last error: {settings.lastScheduleError}. Fix the underlying
+            issue (often a rate source problem — check above) and turn
+            scheduling back on.
+          </s-banner>
+        )}
+        {settings.scheduleEnabled && settings.scheduleFailureCount > 0 && (
+          <s-banner tone="warning" heading="Recent scheduled sync trouble">
+            {settings.scheduleFailureCount} failed attempt
+            {settings.scheduleFailureCount === 1 ? "" : "s"} in a row so far.
+            Last error: {settings.lastScheduleError}.
+          </s-banner>
+        )}
         <s-paragraph>
           Scheduled syncs run automatically in the background once enabled,
           checked every minute and triggered when your interval has elapsed.

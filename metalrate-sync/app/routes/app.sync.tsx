@@ -8,7 +8,12 @@ import { useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { buildPreview, executeSync } from "../services/sync.server";
+import {
+  buildPreview,
+  applyPreviewedRows,
+  type PreviewRow,
+} from "../services/sync.server";
+import { getSettings, type MetalRate } from "../services/rates.server";
 import { METAL_LABELS, METAL_TONE } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -22,6 +27,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         pricePerGram: rate.pricePerGram,
         currency: rate.currency,
         source: rate.source,
+        fetchedAt: rate.fetchedAt.toISOString(),
       })),
       error: null as string | null,
     };
@@ -34,10 +40,61 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 };
 
+interface ApplyPayload {
+  rows: PreviewRow[];
+  rates: Array<{
+    metal: string;
+    pricePerGram: number;
+    currency: string;
+    source: string;
+    fetchedAt: string;
+  }>;
+}
+
+/**
+ * Applies exactly what the merchant previewed — see applyPreviewedRows in
+ * sync.server.ts. The rate-freshness check here is what stops a preview
+ * left open for hours from applying silently-stale prices: it must be
+ * refreshed rather than trusted forever.
+ */
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
+  const shop = session.shop;
   try {
-    const runId = await executeSync(admin, session.shop, "manual");
+    const payload = (await request.json()) as ApplyPayload;
+    if (!Array.isArray(payload.rows) || payload.rows.length === 0) {
+      return {
+        ok: false,
+        runId: null,
+        message: "Nothing to apply — refresh the preview and try again.",
+      };
+    }
+
+    const settings = await getSettings(shop);
+    const maxAgeMs = settings.rateTtlMinutes * 60_000;
+    const now = Date.now();
+    const stale = payload.rates.some(
+      (rate) => now - new Date(rate.fetchedAt).getTime() > maxAgeMs,
+    );
+    if (stale) {
+      return {
+        ok: false,
+        runId: null,
+        message:
+          "This preview has gone stale since it was loaded. Refresh the page and try again so you're applying current prices.",
+      };
+    }
+
+    const rates: MetalRate[] = payload.rates.map((rate) => ({
+      metal: rate.metal as MetalRate["metal"],
+      pricePerGram: rate.pricePerGram,
+      currency: rate.currency,
+      source: rate.source,
+      fetchedAt: new Date(rate.fetchedAt),
+      pricePerOzt: rate.pricePerGram * 31.1034768,
+    }));
+
+    const runId = await applyPreviewedRows(admin, shop, payload.rows, rates);
     return { ok: true, runId, message: "Sync complete" };
   } catch (error) {
     return {
@@ -82,7 +139,16 @@ export default function SyncPreview() {
         variant="primary"
         {...(syncing ? { loading: true } : {})}
         {...(willUpdate.length === 0 ? { disabled: true } : {})}
-        onClick={() => fetcher.submit({}, { method: "POST" })}
+        onClick={() =>
+          // react-router's JsonValue index-signature type rejects typed
+          // interfaces (PreviewRow[]) even though this is plain JSON-safe
+          // data at runtime -- known friction with useFetcher's JSON submit.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          fetcher.submit({ rows, rates } as any, {
+            method: "POST",
+            encType: "application/json",
+          })
+        }
       >
         {willUpdate.length > 0
           ? `Apply ${willUpdate.length} price change${willUpdate.length === 1 ? "" : "s"}`

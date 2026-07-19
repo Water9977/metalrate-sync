@@ -74,8 +74,15 @@ export function toCsv(
   rows: Array<Record<string, string | number | null>>,
   columns: string[],
 ): string {
+  // M7 fix: a cell starting with =, +, -, or @ is read as a formula by
+  // Excel/Sheets when the CSV is opened — e.g. a product title of
+  // `=HYPERLINK(...)` would execute. Prefix a leading apostrophe (the
+  // standard CSV-injection guard) so it's always read back as plain text.
   const escape = (value: string | number | null): string => {
-    const str = value == null ? "" : String(value);
+    let str = value == null ? "" : String(value);
+    if (/^[=+\-@]/.test(str)) {
+      str = `'${str}`;
+    }
     return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   };
   const lines = [columns.join(",")];

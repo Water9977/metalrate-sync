@@ -13,5 +13,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await db.session.deleteMany({ where: { shop } });
   }
 
+  // M6 fix: sessions being gone doesn't stop scheduleEnabled from being
+  // true — without this, the scheduler kept attempting this shop every
+  // minute (failing with no session) until the shop/redact webhook wipes
+  // settings ~48h later. Disable scheduling immediately instead of waiting
+  // on the H2 circuit breaker to grind through 5 failed attempts first.
+  await db.shopSettings.updateMany({
+    where: { shop },
+    data: { scheduleEnabled: false },
+  });
+
   return new Response();
 };
