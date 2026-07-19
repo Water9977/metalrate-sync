@@ -119,8 +119,8 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 **7. Once approved:** Chris (and anyone else) installs via the normal App Store trial. Give Chris a private free plan right after (Dev Dashboard → Pricing) — done, no further steps.
 
-**Domain / SEO (see below for name ideas):**
-- [ ] Buy domain (user doing this — browsing now).
+**Domain / SEO:**
+- [x] Domain chosen: **metalratesync.com** (purchased 2026-07-19) — exact match to the app/listing name, the pick recommended for this niche (App Store search matters more than Google SEO here; brand consistency across listing/support-email/domain wins over a keyword-stuffed alternative).
 - [ ] Build the marketing/pricing site on it (later).
 - [ ] Point the privacy policy + support page at it before drafting the App Store listing form.
 
