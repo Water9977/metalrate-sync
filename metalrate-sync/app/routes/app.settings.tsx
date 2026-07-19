@@ -9,8 +9,20 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { getSettings } from "../services/rates.server";
+import { getSettings, SCHEDULE_INTERVAL_MINUTES } from "../services/rates.server";
 import { METAL_LABELS, SUPPORTED_METALS, INDIA_RATE_CITIES } from "../constants";
+
+function describeInterval(minutes: number): string {
+  if (minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return days === 1 ? "day" : `${days} days`;
+  }
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return hours === 1 ? "hour" : `${hours} hours`;
+  }
+  return `${minutes} minutes`;
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -24,7 +36,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       rateCity: settings.rateCity ?? "",
       baseCurrency: settings.baseCurrency,
       scheduleEnabled: settings.scheduleEnabled,
-      scheduleInterval: settings.scheduleInterval,
+      scheduleIntervalMinutes: SCHEDULE_INTERVAL_MINUTES,
       scheduleFailureCount: settings.scheduleFailureCount,
       lastScheduleError: settings.lastScheduleError,
     },
@@ -58,16 +70,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           : {}),
         baseCurrency: currencyInput,
         scheduleEnabled: form.get("scheduleEnabled") === "on",
-        scheduleInterval: Math.max(
-          15,
-          Number(form.get("scheduleInterval") ?? 60),
-        ),
+        // Sync frequency is server-controlled (SCHEDULE_INTERVAL_MINUTES),
+        // not a merchant-set field -- see rates.server.ts for why.
+        scheduleInterval: SCHEDULE_INTERVAL_MINUTES,
       },
       create: {
         shop,
         rateProvider: providerInput,
         rateCity: rateCityInput || null,
         baseCurrency: currencyInput,
+        scheduleInterval: SCHEDULE_INTERVAL_MINUTES,
       },
     });
     // No cache bust needed anymore: the rate cache is global and keyed by
@@ -172,16 +184,9 @@ export default function Settings() {
             <s-switch
               label="Automatic sync schedule"
               name="scheduleEnabled"
-              details="Reprice automatically at a fixed interval. Manual preview stays available anytime."
+              details={`Reprice automatically every ${describeInterval(settings.scheduleIntervalMinutes)}. Manual preview stays available anytime.`}
               {...(settings.scheduleEnabled ? { checked: true } : {})}
             ></s-switch>
-            <s-number-field
-              label="Sync every (minutes)"
-              name="scheduleInterval"
-              min={15}
-              value={String(settings.scheduleInterval)}
-              details="Minimum 15 minutes"
-            ></s-number-field>
 
             <s-button
               variant="primary"

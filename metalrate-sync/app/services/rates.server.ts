@@ -14,6 +14,20 @@ export const RATE_TTL_MINUTES = Math.max(
   Number(process.env.RATE_TTL_MINUTES ?? 480),
 );
 
+/**
+ * Same reasoning, different knob: how often the scheduler reprices at all.
+ * This used to be a free-form merchant field (min 15) — nothing stopped a
+ * merchant setting it to 15 and getting 96 automatic Apply cycles/day,
+ * hammering their own Shopify Admin API and (once plans exist) bypassing
+ * the "2x/day Starter, 5x/day Pro" tier design entirely by self-selecting
+ * unlimited. Twice a day (720min) matches the Starter-tier promise and is
+ * the sane default for everyone until plan-gating exists.
+ */
+export const SCHEDULE_INTERVAL_MINUTES = Math.max(
+  15,
+  Number(process.env.SCHEDULE_INTERVAL_MINUTES ?? 720),
+);
+
 export interface MetalRate {
   metal: MetalCode;
   currency: string;
