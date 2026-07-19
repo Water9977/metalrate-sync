@@ -84,7 +84,7 @@ All 18 findings resolved 2026-07-18/19 (commit `c9f497e`) — see architecture.m
 Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff changes). Full detail in architecture.md "App Store submission checklist" — this is the flat version to work through.
 
 **Irreversible decision first:**
-- [ ] Confirm current distribution status for `metalrate-sync` in the Dev Dashboard (should be undecided/unset still). **Do not select Custom for this app** if the plan is a public App Store listing later — that choice can never be undone. See "Getting the app to Chris" below for the actual access plan.
+- [ ] `metalrate-sync`'s distribution gets set to **Custom** (for Chris — see "Getting the app to Chris" below), which means this specific app record is no longer eligible for a future Public App Store listing. **The eventual public submission needs a brand-new app record** — plan for that when billing is actually ready, don't reuse this one.
 
 **Configuration:**
 - [x] App icon — 1200×1200px set in the Dev Dashboard (done 2026-07-19).
@@ -121,27 +121,19 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 ---
 
-## Getting the app to Chris — detailed steps
+## Getting the app to Chris — simplified plan (2026-07-19, revised)
 
-No App Store review needed for this. Two tracks in parallel: Chris gets a **Custom-distribution second app** now; the main `metalrate-sync` app stays distribution-unset for the future public listing (that choice is irreversible — never set the main app to Custom).
+Originally planned a second app + second Railway service to protect the main app's future Public listing. **Simplified**: not worth the overhead. Flip the *existing* `metalrate-sync` app to Custom distribution directly — no new app, no new service, no code changes, no redeploy.
 
-**Step-by-step (needs your Dev Dashboard login, ~15 min):**
+Why this is safe: Custom distribution allows unlimited installs on **dev stores** (your ongoing testing is unaffected) plus **exactly one real live store** for a non-Plus account — that one slot is Chris. Yes, this app can never later become the Public App Store listing (irreversible), but that listing needs billing + the rest of the submission checklist first (weeks away) and will need its own fresh app record at that point regardless — a 5-minute task to do *then*, not a reason to add complexity *now*. "Give Chris Pro for free / a trial" needs zero setup either — there's no billing code in the app yet, so every install already gets full unrestricted access automatically.
 
-1. **Create the second app.** Dev Dashboard ([dev.shopify.com/dashboard](https://dev.shopify.com/dashboard)) → Apps → Create app. Name it something like `MetalRate Sync (Liquid Bullion)`. This gives you a new client_id + client secret — same codebase will serve it.
-2. **Point it at the same Railway deployment.** In the new app's configuration set:
-   - App URL: `https://metalrate-sync-app-production.up.railway.app`
-   - Redirect URL: `https://metalrate-sync-app-production.up.railway.app/auth/callback`
-   - Scopes: `write_products`
-   - Webhooks: same three subscriptions as the main app (app/uninstalled, app/scopes_update, compliance trio) — mirror what's in `shopify.app.toml`.
-   ⚠️ **One Railway service can only hold one SHOPIFY_API_KEY/SECRET pair.** Easiest correct setup: deploy a **second Railway service** from the same repo (Railway → New Service → same GitHub repo), give it the new app's API key + secret + same DATABASE_URL + SHOPIFY_APP_URL pointing at its own generated domain, and use THAT domain in step 2's URLs instead. ~5 extra minutes, zero code changes. (Alternative — swapping the main service's env vars to the new app — breaks your dev-store install; don't.)
-   - The `SHOPIFY_API_SECRET` for the new app: enter it directly in Railway's dashboard yourself, same as before. I never touch it.
-3. **Set distribution.** New app → Distribution → Choose **Custom distribution**. Enter Chris's store domain (`liquidgoldnuggets.myshopify.com` — confirm the exact .myshopify.com domain with him first; the public domain is liquidgoldnuggets.com but the field wants the myshopify one). Leave "Allow multi-store installs" unchecked.
-4. **Generate the install link** (button right there after entering the domain). Copy it.
-5. **Email the link to Chris** with one line of instructions: "open this while logged into your Shopify admin, click Install." No review, no waiting — it installs immediately on his real store.
-6. **After he installs:** his shop row appears in the shared Postgres. With `METALPRICEAPI_KEY` set on the service, he lands directly on **live rates by default** — nothing to configure. Manual entry stays available if he prefers his own board rate. (Remember the second Railway service needs `METALPRICEAPI_KEY` set too, same as the main one.)
+**Steps (Dev Dashboard, ~5 min, no code):**
+1. Dev Dashboard → `metalrate-sync` app → Distribution → **Custom distribution**.
+2. Enter Chris's exact `.myshopify.com` domain (confirm with him — his public domain is liquidgoldnuggets.com, the field wants the myshopify one).
+3. Generate the install link, copy it.
+4. Email it to Chris: "open while logged into your Shopify admin, click Install." No review, no waiting.
+5. He lands directly on live rates by default (the app-owned `METALPRICEAPI_KEY` is already configured on the one shared service) — nothing for him to set up.
 
-**Before sending the link (small but real):**
-- [ ] Redeploy Railway so the audit-2 fixes (including the demo-rate safety gate) are live before a real store touches it.
-- [ ] Confirm with Chris his exact `.myshopify.com` domain.
+**If a second real merchant wants in before the public listing exists:** that needs its own separate Custom app then — cross that bridge when it happens, not now.
 
-**Public launch track (runs independently):** the "Launch / App Store submission TODOs" above, on the main app. Billing is the biggest gap. Q5 (app-owned key + global cache) lands with that work.
+**Public launch track (runs independently, whenever billing is ready):** a brand-new app record for the App Store submission — separate from whatever Chris is on. The "Launch / App Store submission TODOs" above cover it.
