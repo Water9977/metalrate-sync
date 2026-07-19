@@ -152,17 +152,37 @@ async function paginateFast(
   return { bySku, hitCap: fetched >= cap };
 }
 
+// S2 fix (audit #2): parse the JSONL as it streams instead of buffering the
+// whole file — a 100k-variant catalog is tens of MB and used to sit in
+// memory twice (raw text + parsed rows).
 async function downloadAndParseJsonl(
   url: string,
 ): Promise<Map<string, CatalogVariant>> {
   const bySku = new Map<string, CatalogVariant>();
   const response = await fetch(url);
-  const text = await response.text();
-  for (const line of text.split("\n")) {
-    if (!line.trim()) continue;
+  if (!response.body) return bySku;
+
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+  let remainder = "";
+
+  const parseLine = (line: string) => {
+    if (!line.trim()) return;
     const node = JSON.parse(line) as RawVariantNode;
     if (node.sku) bySku.set(node.sku, toCatalogVariant(node));
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    remainder += decoder.decode(value, { stream: true });
+    const lines = remainder.split("\n");
+    remainder = lines.pop() ?? "";
+    for (const line of lines) parseLine(line);
   }
+  remainder += decoder.decode();
+  parseLine(remainder);
+
   return bySku;
 }
 

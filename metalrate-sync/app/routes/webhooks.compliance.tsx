@@ -23,8 +23,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         prisma.variantConfig.deleteMany({ where: { shop } }),
         prisma.pricingFormula.deleteMany({ where: { shop } }),
         prisma.manualRate.deleteMany({ where: { shop } }),
-        prisma.metalRateCache.deleteMany({ where: { shop } }),
-        // P4 fix (audit #2): these two were missing from the redaction wipe.
+        // (rate cache is global now — no shop-scoped rows to redact)
+        // P4 fix (audit #2): these were missing from the redaction wipe.
         prisma.previewSnapshot.deleteMany({ where: { shop } }),
         prisma.bulkCatalogJob.deleteMany({ where: { shop } }),
         prisma.session.deleteMany({ where: { shop } }),

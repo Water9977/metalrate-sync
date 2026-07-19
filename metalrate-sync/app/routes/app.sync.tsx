@@ -14,7 +14,11 @@ import {
   applyPreviewedRows,
   type PreviewRow,
 } from "../services/sync.server";
-import { getSettings, type MetalRate } from "../services/rates.server";
+import {
+  getSettings,
+  RATE_TTL_MINUTES,
+  type MetalRate,
+} from "../services/rates.server";
 import { METAL_LABELS, METAL_TONE } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -106,8 +110,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       };
     }
 
-    const settings = await getSettings(shop);
-    const maxAgeMs = settings.rateTtlMinutes * 60_000;
+    const maxAgeMs = RATE_TTL_MINUTES * 60_000;
     const now = Date.now();
     const stale = storedRates.some(
       (rate) => now - new Date(rate.fetchedAt).getTime() > maxAgeMs,
@@ -164,6 +167,11 @@ export default function SyncPreview() {
   // P1 fix (audit #2): applying DEMO rates to a store needs an explicit
   // second click — first click arms, second actually applies.
   const [demoArmed, setDemoArmed] = useState(false);
+  // S1-UI fix (audit #2): don't render 10k table rows at once — show a
+  // page and let the merchant reveal the rest. Apply always covers ALL
+  // rows (it works from the server-side snapshot, not what's displayed).
+  const PREVIEW_PAGE_SIZE = 250;
+  const [showAllRows, setShowAllRows] = useState(false);
 
   const willUpdate = rows.filter((row) => row.status === "will_update");
   const held = rows.filter((row) => row.status === "stop_loss");
@@ -301,7 +309,7 @@ export default function SyncPreview() {
                   <s-table-header>Status</s-table-header>
                 </s-table-header-row>
                 <s-table-body>
-                  {rows.map((row) => {
+                  {(showAllRows ? rows : rows.slice(0, PREVIEW_PAGE_SIZE)).map((row) => {
                     const meta = STATUS_META[row.status] ?? STATUS_META.no_change;
                     return (
                       <s-table-row key={row.variantId}>
@@ -340,6 +348,17 @@ export default function SyncPreview() {
                   })}
                 </s-table-body>
               </s-table>
+            )}
+            {!showAllRows && rows.length > PREVIEW_PAGE_SIZE && (
+              <s-stack direction="block" gap="base" alignItems="center">
+                <s-text color="subdued">
+                  Showing the first {PREVIEW_PAGE_SIZE} of {rows.length}{" "}
+                  variants. Apply always covers all of them.
+                </s-text>
+                <s-button variant="tertiary" onClick={() => setShowAllRows(true)}>
+                  Show all {rows.length}
+                </s-button>
+              </s-stack>
             )}
           </s-section>
         </>

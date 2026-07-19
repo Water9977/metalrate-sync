@@ -3,6 +3,17 @@ import { SUPPORTED_METALS, INDIA_RATE_CITIES, type MetalCode } from "../constant
 
 const GRAMS_PER_TROY_OZ = 31.1034768;
 
+/**
+ * Server-controlled cache TTL (audit #2 Q5): merchants no longer set this.
+ * With the single app-owned key and the global cache, this is the only knob
+ * that decides provider-call frequency — and only the operator can turn it
+ * (RATE_TTL_MINUTES env var on the host).
+ */
+export const RATE_TTL_MINUTES = Math.max(
+  15,
+  Number(process.env.RATE_TTL_MINUTES ?? 480),
+);
+
 export interface MetalRate {
   metal: MetalCode;
   currency: string;
@@ -16,56 +27,71 @@ export async function getSettings(shop: string) {
   return prisma.shopSettings.upsert({
     where: { shop },
     update: {},
-    create: { shop },
+    // New installs default straight to live rates when the app-owned key is
+    // configured — demo rates are only the default fallback in a dev
+    // environment with no key set.
+    create: {
+      shop,
+      rateProvider: process.env.METALPRICEAPI_KEY ? "metalpriceapi" : "mock",
+    },
   });
 }
 
 /**
- * Q1 fix (audit #2): single-flight per shop. Without this, concurrent
- * loaders (dashboard + preview in two tabs, a scheduler tick landing while
- * the merchant browses) each independently saw a stale cache and each fired
- * a live provider call — 2-5x duplicate API calls at every TTL boundary.
- * All concurrent callers now share one in-flight promise. In-process only,
- * which matches the app's documented single-instance deployment (L7).
+ * Returns current rates for all supported metals for this shop's configured
+ * provider. Mock and manual providers never touch the network or the cache.
+ * Live rates go through the GLOBAL cache — one row set per
+ * (currency, city) shared by every shop — so no merchant action can
+ * multiply provider API calls (audit #2 Q5).
+ */
+export async function getRates(shop: string): Promise<MetalRate[]> {
+  const settings = await getSettings(shop);
+  switch (settings.rateProvider) {
+    case "metalpriceapi":
+      return getLiveRates(settings.baseCurrency, settings.rateCity);
+    case "manual":
+      return fetchManualRates(shop, settings.baseCurrency);
+    case "mock":
+    default:
+      return mockRates(settings.baseCurrency);
+  }
+}
+
+/**
+ * Q1 fix (audit #2): single-flight per (currency, city). Concurrent
+ * callers — any number of shops, tabs, or scheduler runs — share one
+ * in-flight provider call. In-process only, which matches the app's
+ * documented single-instance deployment (L7).
  */
 const inflightRates = new Map<string, Promise<MetalRate[]>>();
 
-export function getRates(shop: string): Promise<MetalRate[]> {
-  const existing = inflightRates.get(shop);
+function getLiveRates(currency: string, city: string | null): Promise<MetalRate[]> {
+  const key = `${currency}:${city ?? ""}`;
+  const existing = inflightRates.get(key);
   if (existing) return existing;
-  const promise = getRatesUncoalesced(shop).finally(() => {
-    inflightRates.delete(shop);
+  const promise = getLiveRatesUncoalesced(currency, city).finally(() => {
+    inflightRates.delete(key);
   });
-  inflightRates.set(shop, promise);
+  inflightRates.set(key, promise);
   return promise;
 }
 
-/**
- * Returns current rates for all supported metals, respecting the shop's
- * configured provider and cache TTL. Never throws on provider failure —
- * falls back to the last cached rate and flags staleness via fetchedAt.
- */
-async function getRatesUncoalesced(shop: string): Promise<MetalRate[]> {
-  const settings = await getSettings(shop);
-  const cached = await prisma.metalRateCache.findMany({
-    where: { shop, currency: settings.baseCurrency },
+async function getLiveRatesUncoalesced(
+  currency: string,
+  city: string | null,
+): Promise<MetalRate[]> {
+  const cacheCity = city ?? "";
+  const cached = await prisma.globalRateCache.findMany({
+    where: { currency, city: cacheCity },
   });
   const cachedByMetal = new Map(cached.map((row) => [row.metal, row]));
 
-  const ttlMs = settings.rateTtlMinutes * 60 * 1000;
+  const ttlMs = RATE_TTL_MINUTES * 60 * 1000;
   const now = Date.now();
 
-  // H1 fix: gate freshness on the MOST RECENT successful update, not on
-  // every single metal individually passing. The old "every metal must be
-  // fresh" check meant one metal the provider chronically can't supply (a
-  // partial outage, an unsupported city+metal combo) made isFresh false
-  // forever, forcing a live API call on every single page load -- on a
-  // 100-request/month free tier that burns the whole quota in a day. Using
-  // "most recent" means a normal partial response (3 of 4 metals updated)
-  // still counts as a fresh attempt and throttles the next call to once
-  // per TTL, same as a full response would -- the chronically-missing
-  // metal just keeps serving its last known value in between, exactly like
-  // the full-outage stale-cache fallback below already does.
+  // H1 fix (audit #1), carried over: freshness gates on the MOST RECENT
+  // successful update, not on every metal individually — one chronically
+  // missing metal can't force a refetch on every call.
   const hasAllMetals = SUPPORTED_METALS.every((metal) => cachedByMetal.has(metal));
   const mostRecentFetch =
     cached.length > 0
@@ -78,20 +104,14 @@ async function getRatesUncoalesced(shop: string): Promise<MetalRate[]> {
   }
 
   try {
-    const fresh = await fetchFromProvider(
-      settings.rateProvider,
-      settings.rateApiKey,
-      settings.baseCurrency,
-      shop,
-      settings.rateCity,
-    );
+    const fresh = await fetchMetalPriceApi(currency, city);
     for (const rate of fresh) {
-      await prisma.metalRateCache.upsert({
+      await prisma.globalRateCache.upsert({
         where: {
-          shop_metal_currency: {
-            shop,
+          metal_currency_city: {
             metal: rate.metal,
             currency: rate.currency,
+            city: cacheCity,
           },
         },
         update: {
@@ -100,7 +120,15 @@ async function getRatesUncoalesced(shop: string): Promise<MetalRate[]> {
           source: rate.source,
           fetchedAt: rate.fetchedAt,
         },
-        create: { shop, ...rate },
+        create: {
+          metal: rate.metal,
+          currency: rate.currency,
+          city: cacheCity,
+          pricePerOzt: rate.pricePerOzt,
+          pricePerGram: rate.pricePerGram,
+          source: rate.source,
+          fetchedAt: rate.fetchedAt,
+        },
       });
     }
     // Merge: a metal the provider didn't return this round falls back to
@@ -137,24 +165,6 @@ function toMetalRate(row: {
   };
 }
 
-async function fetchFromProvider(
-  provider: string,
-  apiKey: string | null,
-  currency: string,
-  shop: string,
-  city: string | null,
-): Promise<MetalRate[]> {
-  switch (provider) {
-    case "metalpriceapi":
-      return fetchMetalPriceApi(apiKey, currency, city);
-    case "manual":
-      return fetchManualRates(shop, currency);
-    case "mock":
-    default:
-      return mockRates(currency);
-  }
-}
-
 /** Metal -> requested API symbol, using a city-specific rate when the shop
  * has one configured and that city actually publishes data for the metal
  * (platinum/palladium have no India city data at all; some cities only
@@ -170,21 +180,20 @@ function symbolFor(metal: MetalCode, city: string | null): string {
 }
 
 /**
- * MetalPriceAPI (metalpriceapi.com) — free tier available, same vendor
- * competitor Metal Updater uses. Returns rates quoted as currency-per-metal
- * when using base=USD&currencies=XAU..., where the value is metal priced in
- * base currency terms (inverted). City-specific symbols (confirmed live
- * against /v1/symbols, e.g. "XAU-MUMB") require a paid plan — the free tier
- * returns a clear "requires a paid plan" error for those, surfaced as-is.
+ * MetalPriceAPI (metalpriceapi.com), called with the single APP-OWNED key
+ * from the METALPRICEAPI_KEY env var — merchants never see or supply a key
+ * (audit #2 Q5 / audit #1 L2). Only the operator can change it, on the
+ * hosting dashboard. Returns rates quoted as currency-per-metal when using
+ * base=USD&currencies=XAU..., inverted to get the metal price.
  */
 async function fetchMetalPriceApi(
-  apiKey: string | null,
   currency: string,
   city: string | null,
 ): Promise<MetalRate[]> {
+  const apiKey = process.env.METALPRICEAPI_KEY;
   if (!apiKey) {
     throw new Error(
-      "MetalPriceAPI selected but no API key saved in Settings.",
+      "Live rates aren't configured on this server yet (missing METALPRICEAPI_KEY). Use Manual entry or Demo rates in Settings meanwhile.",
     );
   }
   const symbolByMetal = new Map(

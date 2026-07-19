@@ -36,11 +36,9 @@ model Session {
 model ShopSettings {
   id               Int      @id @default(autoincrement())
   shop             String   @unique
-  rateProvider     String   @default("mock") // mock | metalpriceapi | manual
-  rateApiKey       String?
-  rateCity         String? // MetalPriceAPI India city code (e.g. "MUMB") -- requires a paid plan, gold/silver only
+  rateProvider     String   @default("mock") // mock | metalpriceapi | manual (metalpriceapi becomes the effective default when the app-owned key is configured — see getSettings)
+  rateCity         String? // MetalPriceAPI India city code (e.g. "MUMB") -- gold/silver only
   baseCurrency     String   @default("USD")
-  rateTtlMinutes   Int      @default(480) // 8h default — free MetalPriceAPI plans allow ~100 req/month
   scheduleEnabled  Boolean  @default(false)
   scheduleInterval Int      @default(60) // minutes between automatic syncs
   lastScheduledSyncAt DateTime? // set by scheduler.server.ts, not the user
@@ -50,18 +48,22 @@ model ShopSettings {
   updatedAt        DateTime @updatedAt
 }
 
-// Latest fetched spot rates, cached per shop so we never hammer the rate API
-model MetalRateCache {
+// Latest fetched spot rates — GLOBAL, not per shop (audit #2 Q5): spot
+// prices are the same for every store, so one cached row set per
+// (metal, currency, city) serves all shops. Combined with the single
+// app-owned API key and the single-flight lock in rates.server.ts, no
+// merchant action can multiply provider API calls anymore.
+model GlobalRateCache {
   id           Int      @id @default(autoincrement())
-  shop         String
   metal        String // XAU | XAG | XPT | XPD
   currency     String
+  city         String   @default("") // "" = global spot; else MetalPriceAPI city code
   pricePerOzt  Float
   pricePerGram Float
   source       String
   fetchedAt    DateTime @default(now())
 
-  @@unique([shop, metal, currency])
+  @@unique([metal, currency, city])
 }
 
 // Rates typed in by the merchant when they prefer manual control (e.g. IBJA board rate)

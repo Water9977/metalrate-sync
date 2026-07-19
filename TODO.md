@@ -15,7 +15,7 @@ Fresh audit pass after all audit-#1 fixes shipped. Full detail per finding in [r
 - [x] Q2 — Settings save only busts the rate cache when provider/key/city/currency actually changed
 - [x] Q3 — rate TTL floor raised 1 → 15 minutes (server-side clamp + UI min)
 - [x] Q4 — scheduler tick capped at 3 concurrent shop syncs; overflow shops picked up next tick
-- [ ] Q5 — **structural launch fix, deliberately deferred with the App Store prep** (bundles with removing the BYO key field, which stays for now per decision 2026-07-19): app-owned key + global rate cache + server-controlled fetch cadence + plan-gated manual refresh (2/day Starter, 5/day Pro). Kills the quota class permanently and IS the plan-limit mechanism.
+- [x] Q5 — **shipped 2026-07-19 (evening)**: app-owned key (`METALPRICEAPI_KEY` env var — only the operator can change it, on Railway's dashboard), **global rate cache** keyed (metal, currency, city) shared by all shops, server-controlled TTL (`RATE_TTL_MINUTES` env var, default 480, floor 15 — merchants can't touch it), single-flight per (currency, city). BYO key field + TTL field removed from Settings; `rateApiKey`/`rateTtlMinutes` columns dropped (migration `20260719150000`). No merchant action can trigger provider API calls beyond one fetch per TTL per (currency, city) — the quota class is structurally dead. Remaining piece for later: plan-gated manual refresh counts (needs billing/plans to exist first).
 
 **Product-safety:**
 - [x] P1 — demo rates now loudly gated: warning banner on Preview, two-click "Really apply DEMO prices?" confirm on Apply, warning banner when scheduling is on with mock provider. (Hard block deferred to launch when the app-owned live key exists — mock stays the dev/reviewer path for now.)
@@ -25,8 +25,8 @@ Fresh audit pass after all audit-#1 fixes shipped. Full detail per finding in [r
 
 **Scale (10k-SKU pitch):**
 - [x] S1 (payload half) — Apply request is now a few bytes regardless of catalog size (same fix as P3)
-- [ ] S1 (UI half) — preview table still renders all rows unpaginated; virtualize/paginate before the 10k live validation
-- [ ] S2 — bulk catalog JSONL fully buffered in memory (fine to ~50k variants, streaming later)
+- [x] S1 (UI half) — preview table shows first 250 rows + "Show all N" button; Apply always covers everything (works off the server snapshot, not the visible rows)
+- [x] S2 — bulk catalog JSONL now parsed as a stream instead of buffering the whole file in memory
 - [x] S3 — History details now show "first 500 of N" when a run exceeds the cap
 
 **Cosmetic:**
@@ -61,9 +61,9 @@ All 18 findings resolved 2026-07-18/19 (commit `c9f497e`) — see architecture.m
 
 ## 🔒 Required builds before general launch (not bugs — missing features/gates)
 
-- [ ] **Billing via Shopify App Pricing.** Hard blocker — apps using off-platform billing can't be submitted to the App Store at all. Configured through the Dev Dashboard (no custom Billing API code needed for standard subscription tiers). Pricing decided: $30/mo Starter (500 SKU, 2x/day sync) / $50/mo Pro (unlimited, 5x/day, priority support), 14-day trial, no permanent free tier.
-- [ ] **Plan-limit enforcement in code.** Nothing currently stops a Starter merchant from syncing unlimited times a day or tracking unlimited SKUs — `scheduleInterval` accepts any value ≥15min regardless of plan, no SKU-count gate exists anywhere. Needs: (a) a SKU/variant-count cap check before allowing more `VariantConfig` rows to be enabled, (b) a sync-frequency cap tied to the shop's plan (both scheduled interval and a rate-limit on manual Preview & Sync calls). Fine for Chris's free/private access in the meantime — not fine once real billing is live.
-- [ ] Single app-owned MetalPriceAPI key (replace per-merchant BYO key field) — decided direction, not built. Removes L2 as a live concern too.
+- [ ] **Billing via Shopify App Pricing.** Hard blocker — apps using off-platform billing can't be submitted to the App Store at all. Configured through the Dev Dashboard (no custom Billing API code needed for standard subscription tiers). Pricing decided: $30/mo Starter (500 SKU, 2x/day sync) / $50/mo Pro (unlimited, 5x/day, priority support), 14-day trial, no permanent free tier. **For now everything is free everywhere (2026-07-19 decision) — billing comes with the App Store submission push.**
+- [ ] **Plan-limit enforcement in code.** SKU-count cap + scheduled-interval cap + manual-refresh cap per plan. The quota-side risk is already dead (Q5 shipped: merchants physically can't trigger provider calls), so what's left is purely tier differentiation — build it together with billing, meaningless before plans exist.
+- [x] ~~Single app-owned MetalPriceAPI key~~ — **shipped 2026-07-19**: `METALPRICEAPI_KEY` env var, BYO field removed, key columns dropped. **User action required: add the premium key as `METALPRICEAPI_KEY` on Railway's dashboard (Variables tab) and in the local `.env`** — until then the Live provider shows a clear "not configured" message and Manual/Demo still work. Only you can change the key, from Railway. L2 fully dead.
 - [ ] Split local dev database from the Railway production Postgres — currently sharing one instance, fine pre-launch, not once there are real paying merchants.
 
 ## 🧩 Optional / nice-to-have (post-MVP, not blocking anything)
@@ -84,13 +84,13 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [ ] Confirm current distribution status for `metalrate-sync` in the Dev Dashboard (should be undecided/unset still). **Do not select Custom for this app** if the plan is a public App Store listing later — that choice can never be undone. See "Getting the app to Chris" below for the actual access plan.
 
 **Configuration:**
-- [ ] App icon — 1200×1200px, JPEG or PNG.
+- [x] App icon — 1200×1200px set in the Dev Dashboard (done 2026-07-19).
 - [ ] Emergency developer contact — email + phone number.
 - [ ] Double-check all app URLs avoid "Shopify"/"Example" (Railway domain already clean).
 - [x] Compliance webhooks (customers/data_request, customers/redact, shop/redact) — already built correctly.
 
 **Listing content:**
-- [ ] Confirm "MetalRate Sync" doesn't collide with an existing app name.
+- [x] Confirm "MetalRate Sync" doesn't collide with an existing app name — **verified clear via web search 2026-07-19**: no app by that name; closest are "Metal Updater" and two unrelated "GoldSync" apps. Note: MetalpriceAPI (the rate vendor) ships its own competing Shopify app — no naming conflict, just competitive awareness.
 - [ ] 3+ screenshots, 1600×900, each a genuinely different feature/view, no desktop chrome, no near-duplicates (actively enforced since March 2026).
 - [ ] Feature image (1600×900) or a 2-3 min *promotional* video — not the same as the Chris walkthrough Looms, which are instructional. A separate short promo cut is needed for the actual listing.
 - [ ] Demo store URL — a clean dev store showing the app live (fixing the Snowboard test data does double duty here).
@@ -130,7 +130,7 @@ No App Store review needed for this. Two tracks in parallel: Chris gets a **Cust
 3. **Set distribution.** New app → Distribution → Choose **Custom distribution**. Enter Chris's store domain (`liquidgoldnuggets.myshopify.com` — confirm the exact .myshopify.com domain with him first; the public domain is liquidgoldnuggets.com but the field wants the myshopify one). Leave "Allow multi-store installs" unchecked.
 4. **Generate the install link** (button right there after entering the domain). Copy it.
 5. **Email the link to Chris** with one line of instructions: "open this while logged into your Shopify admin, click Install." No review, no waiting — it installs immediately on his real store.
-6. **After he installs:** his shop row appears in the shared Postgres. He starts on demo rates (safe — the P1 gate now makes applying demo prices require an explicit double-confirm). Walk him via email through Settings → provider. His own MetalPriceAPI free key or Manual entry both work today.
+6. **After he installs:** his shop row appears in the shared Postgres. With `METALPRICEAPI_KEY` set on the service, he lands directly on **live rates by default** — nothing to configure. Manual entry stays available if he prefers his own board rate. (Remember the second Railway service needs `METALPRICEAPI_KEY` set too, same as the main one.)
 
 **Before sending the link (small but real):**
 - [ ] Redeploy Railway so the audit-2 fixes (including the demo-rate safety gate) are live before a real store touches it.

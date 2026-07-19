@@ -20,10 +20,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return {
     settings: {
       rateProvider: settings.rateProvider,
-      hasApiKey: Boolean(settings.rateApiKey),
+      liveRatesAvailable: Boolean(process.env.METALPRICEAPI_KEY),
       rateCity: settings.rateCity ?? "",
       baseCurrency: settings.baseCurrency,
-      rateTtlMinutes: settings.rateTtlMinutes,
       scheduleEnabled: settings.scheduleEnabled,
       scheduleInterval: settings.scheduleInterval,
       scheduleFailureCount: settings.scheduleFailureCount,
@@ -43,16 +42,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "saveSettings") {
     const providerInput = String(form.get("rateProvider") ?? "mock");
-    const apiKeyInput = String(form.get("rateApiKey") ?? "").trim();
     const rateCityInput = String(form.get("rateCity") ?? "").trim();
     const currencyInput = String(form.get("baseCurrency") ?? "USD").toUpperCase();
-    const existing = await getSettings(shop);
     await prisma.shopSettings.upsert({
       where: { shop },
       update: {
         rateProvider: providerInput,
-        // Keep the stored key when the field is left blank.
-        ...(apiKeyInput ? { rateApiKey: apiKeyInput } : {}),
         // M1 fix: the city field only renders when provider is
         // metalpriceapi, so saving on manual/demo submits no rateCity at
         // all -- that used to be read as "clear the city" and silently
@@ -62,9 +57,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           ? { rateCity: rateCityInput || null }
           : {}),
         baseCurrency: currencyInput,
-        // Q3 fix (audit #2): floor raised from 1 to 15 minutes. A 1-minute
-        // TTL let a browsing merchant burn ~60 provider calls/hour.
-        rateTtlMinutes: Math.max(15, Number(form.get("rateTtlMinutes") ?? 15)),
         scheduleEnabled: form.get("scheduleEnabled") === "on",
         scheduleInterval: Math.max(
           15,
@@ -74,23 +66,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       create: {
         shop,
         rateProvider: providerInput,
-        rateApiKey: apiKeyInput || null,
         rateCity: rateCityInput || null,
         baseCurrency: currencyInput,
       },
     });
-    // Q2 fix (audit #2): only bust the rate cache when something that
-    // actually affects the rates changed. It used to be unconditional, so
-    // toggling the schedule switch forced a fresh provider API call.
-    const rateSourceChanged =
-      existing.rateProvider !== providerInput ||
-      existing.baseCurrency !== currencyInput ||
-      Boolean(apiKeyInput) ||
-      (providerInput === "metalpriceapi" &&
-        (existing.rateCity ?? "") !== rateCityInput);
-    if (rateSourceChanged) {
-      await prisma.metalRateCache.deleteMany({ where: { shop } });
-    }
+    // No cache bust needed anymore: the rate cache is global and keyed by
+    // (currency, city) — switching provider/currency just reads different
+    // rows (audit #2 Q2/Q5).
     return { ok: true, message: "Settings saved" };
   }
 
@@ -110,7 +92,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         create: { shop, metal, pricePerGram, currency: baseCurrency },
       });
     }
-    await prisma.metalRateCache.deleteMany({ where: { shop } });
     return { ok: true, message: "Manual rates saved" };
   }
 
@@ -149,27 +130,24 @@ export default function Settings() {
                 setProvider((event.target as HTMLSelectElement).value)
               }
             >
-              <s-option value="mock">Demo rates (testing only)</s-option>
-              <s-option value="metalpriceapi">MetalPriceAPI (live)</s-option>
+              <s-option value="metalpriceapi">Live market rates</s-option>
               <s-option value="manual">Manual entry (your own board rate)</s-option>
+              <s-option value="mock">Demo rates (testing only)</s-option>
             </s-select>
 
             {provider === "metalpriceapi" && (
               <>
-                <s-text-field
-                  label="MetalPriceAPI key"
-                  name="rateApiKey"
-                  placeholder={
-                    settings.hasApiKey ? "•••••••• (saved — leave blank to keep)" : "Paste API key"
-                  }
-                  details="Get a free key at metalpriceapi.com."
-                ></s-text-field>
-
+                {!settings.liveRatesAvailable && (
+                  <s-banner tone="warning" heading="Live rates not configured">
+                    This server doesn't have a rate-provider key configured
+                    yet. Use Manual entry or Demo rates until it does.
+                  </s-banner>
+                )}
                 <s-select
                   label="India city rate (optional)"
                   name="rateCity"
                   value={settings.rateCity}
-                  details="Use a city-specific gold/silver rate instead of the global spot price. Needs a paid MetalPriceAPI plan — leave on Global if you're on the free tier. Platinum and palladium always use the global rate (no city data exists for them)."
+                  details="Use a city-specific gold/silver rate instead of the global spot price. Platinum and palladium always use the global rate (no city data exists for them)."
                 >
                   <s-option value="">Global (no city)</s-option>
                   {INDIA_RATE_CITIES.map((city) => (
@@ -182,21 +160,12 @@ export default function Settings() {
               </>
             )}
 
-            <s-grid gridTemplateColumns="1fr 1fr" gap="base">
-              <s-text-field
-                label="Base currency"
-                name="baseCurrency"
-                value={settings.baseCurrency}
-                details="ISO code, e.g. USD, INR, AED"
-              ></s-text-field>
-              <s-number-field
-                label="Rate cache (minutes)"
-                name="rateTtlMinutes"
-                min={15}
-                value={String(settings.rateTtlMinutes)}
-                details="On a free MetalPriceAPI plan (~100 requests/month) keep this at 480+ (8h) or higher. Lower it only if you're on a paid plan and need fresher rates."
-              ></s-number-field>
-            </s-grid>
+            <s-text-field
+              label="Base currency"
+              name="baseCurrency"
+              value={settings.baseCurrency}
+              details="ISO code, e.g. USD, INR, AED"
+            ></s-text-field>
 
             <s-divider></s-divider>
 
