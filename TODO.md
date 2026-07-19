@@ -111,6 +111,11 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [ ] Build the marketing/pricing site on it (later, not urgent for Chris).
 - [ ] Point the privacy policy + support page at it before drafting the App Store listing form.
 
+**Credential hygiene (do before real merchants, not urgent today):**
+- [ ] Rotate all four credentials exposed in chat/screenshots during setup: MetalPriceAPI key, `SHOPIFY_API_SECRET`, the Railway Postgres password (visible in a 2026-07-19 dashboard screenshot), and treat `SHOPIFY_API_KEY` as public (it is by design). Rotate → update Railway variables + local `.env` → redeploy.
+
+**Deploy-workflow note (bit us 2026-07-19):** the Railway service deploys via `railway up` (CLI upload), NOT from GitHub — pushing to GitHub does nothing to production, and Railway's "Redeploy" button just restarts the old image. Either run `railway up` after every change that should ship, or (better) connect the service to the GitHub repo in Railway → Settings → Source so pushes auto-deploy.
+
 ---
 
 ## Getting the app to Chris — detailed steps
