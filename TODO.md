@@ -2,7 +2,7 @@
 
 Single source of truth for what's left. Cross-linked with [architecture.md](architecture.md) (full narrative/decisions) — this file is the flat checklist to work off of. Slash items as they're done, don't delete them (keep the record).
 
-Last updated: 2026-07-19 (evening — audit #2 findings added).
+Last updated: 2026-07-19 (night — collapsed to a single launch path, no more separate Chris fast-track).
 
 ---
 
@@ -79,20 +79,26 @@ All 18 findings resolved 2026-07-18/19 (commit `c9f497e`) — see architecture.m
 
 ---
 
-## 🚀 Launch / App Store submission TODOs
+## 🚀 Path to launch — ONE track now (2026-07-19, simplified)
 
-Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff changes). Full detail in architecture.md "App Store submission checklist" — this is the flat version to work through.
+**Decision reversed from earlier the same day:** dropped the "second app + Custom distribution to fast-track Chris" plan entirely — too much overhead for what it bought. There is no platform shortcut that gets any external merchant, including Chris, into a Public-track app before it clears review — that's a Shopify rule, not something worth engineering around. So: **one app, one path, straight to real submission.** `metalrate-sync`'s distribution gets set to **Public** (not Custom) — do this as the first irreversible step, since it locks the app onto the App Store track for good, which is what's actually wanted now.
 
-**Irreversible decision first:**
-- [ ] `metalrate-sync`'s distribution gets set to **Custom** (for Chris — see "Getting the app to Chris" below), which means this specific app record is no longer eligible for a future Public App Store listing. **The eventual public submission needs a brand-new app record** — plan for that when billing is actually ready, don't reuse this one.
+**Chris's access is simply: he installs like any merchant, once this is live.** Real 14-day trial via the normal App Store flow, no waiting on a separate app or Railway service. Afterward, hand him a **private plan** (Dev Dashboard → Pricing → add a private plan, up to 15 allowed per app) so he's free-for-life as design partner #1 — zero extra infrastructure, no billing code needed since nothing charges yet anyway. He gets full unrestricted access automatically today because there are no plan gates in the code (by design, see "Required builds" above) — that's not a workaround, that's just the current state.
 
-**Configuration:**
+Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff changes). Full detail in architecture.md "App Store submission checklist" — below is the flat version to work through, in order.
+
+**1. Distribution (do first, irreversible):**
+- [ ] Dev Dashboard → `metalrate-sync` → Distribution → **Public distribution**. Confirms this app is the one and only App Store submission — no second app needed anymore.
+
+**2. Configuration:**
 - [x] App icon — 1200×1200px set in the Dev Dashboard (done 2026-07-19).
 - [ ] Emergency developer contact — email + phone number.
 - [ ] Double-check all app URLs avoid "Shopify"/"Example" (Railway domain already clean).
 - [x] Compliance webhooks (customers/data_request, customers/redact, shop/redact) — already built correctly.
 
-**Listing content:**
+**3. Billing + plan limits** (already tracked above under "Required builds" — the hard blocker, do this before the listing content below is worth finishing).
+
+**4. Listing content:**
 - [x] Confirm "MetalRate Sync" doesn't collide with an existing app name — **verified clear via web search 2026-07-19**: no app by that name; closest are "Metal Updater" and two unrelated "GoldSync" apps. Note: MetalpriceAPI (the rate vendor) ships its own competing Shopify app — no naming conflict, just competitive awareness.
 - [ ] 3+ screenshots, 1600×900, each a genuinely different feature/view, no desktop chrome, no near-duplicates (actively enforced since March 2026).
 - [ ] Feature image (1600×900) or a 2-3 min *promotional* video — not the same as the Chris walkthrough Looms, which are instructional. A separate short promo cut is needed for the actual listing.
@@ -103,15 +109,19 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [ ] Sales-channel/geography install-eligibility flags set.
 - [ ] Protected customer data — opt out (app needs no PII/customer scopes).
 
-**Review prep:**
+**5. Review prep:**
 - [ ] Full setup screencast for the reviewer (broader than the Chris Looms — cover everything, not just highlights).
 - [ ] Decide review path for the live-rate feature: either hand over working MetalPriceAPI test credentials, or make sure the built-in **mock** provider mode is enough for the reviewer to verify functionality (safer — no real key handed to Shopify).
 - [ ] Run the Dev Dashboard's automated pre-submission checks, clear every flag.
 - [ ] Zero web errors (404/500) and zero UI bugs anywhere reachable during review.
 
+**6. Submit for review.**
+
+**7. Once approved:** Chris (and anyone else) installs via the normal App Store trial. Give Chris a private free plan right after (Dev Dashboard → Pricing) — done, no further steps.
+
 **Domain / SEO (see below for name ideas):**
 - [ ] Buy domain (user doing this — browsing now).
-- [ ] Build the marketing/pricing site on it (later, not urgent for Chris).
+- [ ] Build the marketing/pricing site on it (later).
 - [ ] Point the privacy policy + support page at it before drafting the App Store listing form.
 
 **Credential hygiene (do before real merchants, not urgent today):**
@@ -121,19 +131,6 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 ---
 
-## Getting the app to Chris — simplified plan (2026-07-19, revised)
+## Chris — no separate plan needed anymore
 
-Originally planned a second app + second Railway service to protect the main app's future Public listing. **Simplified**: not worth the overhead. Flip the *existing* `metalrate-sync` app to Custom distribution directly — no new app, no new service, no code changes, no redeploy.
-
-Why this is safe: Custom distribution allows unlimited installs on **dev stores** (your ongoing testing is unaffected) plus **exactly one real live store** for a non-Plus account — that one slot is Chris. Yes, this app can never later become the Public App Store listing (irreversible), but that listing needs billing + the rest of the submission checklist first (weeks away) and will need its own fresh app record at that point regardless — a 5-minute task to do *then*, not a reason to add complexity *now*. "Give Chris Pro for free / a trial" needs zero setup either — there's no billing code in the app yet, so every install already gets full unrestricted access automatically.
-
-**Steps (Dev Dashboard, ~5 min, no code):**
-1. Dev Dashboard → `metalrate-sync` app → Distribution → **Custom distribution**.
-2. Enter Chris's exact `.myshopify.com` domain (confirm with him — his public domain is liquidgoldnuggets.com, the field wants the myshopify one).
-3. Generate the install link, copy it.
-4. Email it to Chris: "open while logged into your Shopify admin, click Install." No review, no waiting.
-5. He lands directly on live rates by default (the app-owned `METALPRICEAPI_KEY` is already configured on the one shared service) — nothing for him to set up.
-
-**If a second real merchant wants in before the public listing exists:** that needs its own separate Custom app then — cross that bridge when it happens, not now.
-
-**Public launch track (runs independently, whenever billing is ready):** a brand-new app record for the App Store submission — separate from whatever Chris is on. The "Launch / App Store submission TODOs" above cover it.
+Superseded 2026-07-19: no more second app, no second Railway service, no Custom distribution. Chris installs the one real app once it's Public and live, same flow as any merchant, then gets a private free plan. See "Path to launch" above — his access is just step 7 of that single list.
