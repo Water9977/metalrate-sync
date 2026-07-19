@@ -24,6 +24,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         prisma.pricingFormula.deleteMany({ where: { shop } }),
         prisma.manualRate.deleteMany({ where: { shop } }),
         prisma.metalRateCache.deleteMany({ where: { shop } }),
+        // P4 fix (audit #2): these two were missing from the redaction wipe.
+        prisma.previewSnapshot.deleteMany({ where: { shop } }),
+        prisma.bulkCatalogJob.deleteMany({ where: { shop } }),
+        prisma.session.deleteMany({ where: { shop } }),
         prisma.shopSettings.deleteMany({ where: { shop } }),
       ]);
       break;

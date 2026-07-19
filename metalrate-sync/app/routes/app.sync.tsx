@@ -4,7 +4,8 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { useNavigate, useLoaderData, useFetcher } from "react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import prisma from "../db.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
@@ -18,9 +19,30 @@ import { METAL_LABELS, METAL_TONE } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const shop = session.shop;
+  const settings = await getSettings(shop);
   try {
-    const { rows, rates } = await buildPreview(session.shop);
+    const { rows, rates } = await buildPreview(shop);
+    // P3/S1 fix (audit #2): persist what the merchant is being shown, and
+    // let Apply reference it by id. The client can no longer forge prices,
+    // rates, or freshness — and the Apply request stays a few bytes even
+    // with 10k tracked variants (it used to round-trip every row as JSON).
+    const snapshot = await prisma.previewSnapshot.upsert({
+      where: { shop },
+      update: {
+        rowsJson: JSON.stringify(rows),
+        ratesJson: JSON.stringify(rates),
+        createdAt: new Date(),
+      },
+      create: {
+        shop,
+        rowsJson: JSON.stringify(rows),
+        ratesJson: JSON.stringify(rates),
+      },
+    });
     return {
+      snapshotId: snapshot.id,
+      provider: settings.rateProvider,
       rows,
       rates: rates.map((rate) => ({
         metal: rate.metal,
@@ -33,36 +55,50 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     };
   } catch (error) {
     return {
-      rows: [],
+      snapshotId: null,
+      provider: settings.rateProvider,
+      rows: [] as PreviewRow[],
       rates: [],
       error: error instanceof Error ? error.message : "Preview failed",
     };
   }
 };
 
-interface ApplyPayload {
-  rows: PreviewRow[];
-  rates: Array<{
-    metal: string;
-    pricePerGram: number;
-    currency: string;
-    source: string;
-    fetchedAt: string;
-  }>;
+interface StoredRate {
+  metal: string;
+  pricePerGram: number;
+  pricePerOzt: number;
+  currency: string;
+  source: string;
+  fetchedAt: string;
 }
 
 /**
- * Applies exactly what the merchant previewed — see applyPreviewedRows in
- * sync.server.ts. The rate-freshness check here is what stops a preview
- * left open for hours from applying silently-stale prices: it must be
- * refreshed rather than trusted forever.
+ * Applies exactly what the merchant previewed, loaded back from the
+ * server-side snapshot their preview created — the client only names the
+ * snapshot, it can't supply prices. The freshness check runs against the
+ * server-stored timestamps, so it can't be spoofed either.
  */
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   try {
-    const payload = (await request.json()) as ApplyPayload;
-    if (!Array.isArray(payload.rows) || payload.rows.length === 0) {
+    const payload = (await request.json()) as { snapshotId?: number };
+    const snapshot = await prisma.previewSnapshot.findUnique({
+      where: { shop },
+    });
+    if (!snapshot || snapshot.id !== payload.snapshotId) {
+      return {
+        ok: false,
+        runId: null,
+        message:
+          "This preview is no longer current (it was refreshed elsewhere or already applied). Reload the page and try again.",
+      };
+    }
+
+    const rows = JSON.parse(snapshot.rowsJson) as PreviewRow[];
+    const storedRates = JSON.parse(snapshot.ratesJson) as StoredRate[];
+    if (rows.length === 0) {
       return {
         ok: false,
         runId: null,
@@ -73,7 +109,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const settings = await getSettings(shop);
     const maxAgeMs = settings.rateTtlMinutes * 60_000;
     const now = Date.now();
-    const stale = payload.rates.some(
+    const stale = storedRates.some(
       (rate) => now - new Date(rate.fetchedAt).getTime() > maxAgeMs,
     );
     if (stale) {
@@ -85,16 +121,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       };
     }
 
-    const rates: MetalRate[] = payload.rates.map((rate) => ({
+    const rates: MetalRate[] = storedRates.map((rate) => ({
       metal: rate.metal as MetalRate["metal"],
       pricePerGram: rate.pricePerGram,
+      pricePerOzt: rate.pricePerOzt,
       currency: rate.currency,
       source: rate.source,
       fetchedAt: new Date(rate.fetchedAt),
-      pricePerOzt: rate.pricePerGram * 31.1034768,
     }));
 
-    const runId = await applyPreviewedRows(admin, shop, payload.rows, rates);
+    const runId = await applyPreviewedRows(admin, shop, rows, rates);
+    // One snapshot = one apply. Deleting it makes a double-click or a
+    // stale second tab a clean "no longer current" error, not a re-run.
+    await prisma.previewSnapshot.delete({ where: { shop } });
     return { ok: true, runId, message: "Sync complete" };
   } catch (error) {
     return {
@@ -116,11 +155,15 @@ const STATUS_META: Record<
 };
 
 export default function SyncPreview() {
-  const { rows, rates, error } = useLoaderData<typeof loader>();
+  const { snapshotId, provider, rows, rates, error } =
+    useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
   const navigate = useNavigate();
   const syncing = fetcher.state !== "idle";
+  // P1 fix (audit #2): applying DEMO rates to a store needs an explicit
+  // second click — first click arms, second actually applies.
+  const [demoArmed, setDemoArmed] = useState(false);
 
   const willUpdate = rows.filter((row) => row.status === "will_update");
   const held = rows.filter((row) => row.status === "stop_loss");
@@ -132,28 +175,48 @@ export default function SyncPreview() {
     }
   }, [fetcher.state, fetcher.data, shopify]);
 
+  const submitApply = () =>
+    fetcher.submit(
+      { snapshotId },
+      { method: "POST", encType: "application/json" },
+    );
+
   return (
     <s-page heading="Preview &amp; sync" inlineSize="large">
       <s-button
         slot="primary-action"
         variant="primary"
+        {...(demoArmed ? { tone: "critical" } : {})}
         {...(syncing ? { loading: true } : {})}
-        {...(willUpdate.length === 0 ? { disabled: true } : {})}
-        onClick={() =>
-          // react-router's JsonValue index-signature type rejects typed
-          // interfaces (PreviewRow[]) even though this is plain JSON-safe
-          // data at runtime -- known friction with useFetcher's JSON submit.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          fetcher.submit({ rows, rates } as any, {
-            method: "POST",
-            encType: "application/json",
-          })
-        }
+        {...(willUpdate.length === 0 || snapshotId == null
+          ? { disabled: true }
+          : {})}
+        onClick={() => {
+          if (provider === "mock" && !demoArmed) {
+            setDemoArmed(true);
+            return;
+          }
+          setDemoArmed(false);
+          submitApply();
+        }}
       >
-        {willUpdate.length > 0
-          ? `Apply ${willUpdate.length} price change${willUpdate.length === 1 ? "" : "s"}`
-          : "Nothing to update"}
+        {willUpdate.length === 0
+          ? "Nothing to update"
+          : demoArmed
+            ? "Really apply DEMO prices?"
+            : `Apply ${willUpdate.length} price change${willUpdate.length === 1 ? "" : "s"}`}
       </s-button>
+
+      {provider === "mock" && !error && rows.length > 0 && (
+        <s-section>
+          <s-banner tone="warning" heading="These are demo rates">
+            Prices below are computed from simulated rates, not the real
+            market. Fine for testing — do not apply on a live store. Switch
+            to a live source in{" "}
+            <s-link href="/app/settings">Settings</s-link>.
+          </s-banner>
+        </s-section>
+      )}
 
       {error && (
         <s-section>

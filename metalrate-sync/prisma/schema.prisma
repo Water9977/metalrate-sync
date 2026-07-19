@@ -154,6 +154,19 @@ model SyncRunItem {
   @@index([runId])
 }
 
+// One active Preview & Sync snapshot per shop (audit #2 P3/S1): the preview
+// loader stores what the merchant was shown here, and Apply references it by
+// id instead of round-tripping every row through the browser -- the client
+// can no longer forge prices/rates/staleness, and the Apply request stays
+// tiny no matter how many variants are tracked.
+model PreviewSnapshot {
+  id        Int      @id @default(autoincrement())
+  shop      String   @unique // one live preview per shop; refreshing replaces it
+  rowsJson  String
+  ratesJson String
+  createdAt DateTime @default(now())
+}
+
 // Tracks one in-flight/last Bulk Operations catalog fetch per shop, so a
 // retry within the polling window reuses the running job instead of
 // starting a duplicate one on Shopify's side.

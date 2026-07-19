@@ -45,6 +45,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const providerInput = String(form.get("rateProvider") ?? "mock");
     const apiKeyInput = String(form.get("rateApiKey") ?? "").trim();
     const rateCityInput = String(form.get("rateCity") ?? "").trim();
+    const currencyInput = String(form.get("baseCurrency") ?? "USD").toUpperCase();
+    const existing = await getSettings(shop);
     await prisma.shopSettings.upsert({
       where: { shop },
       update: {
@@ -59,8 +61,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         ...(providerInput === "metalpriceapi"
           ? { rateCity: rateCityInput || null }
           : {}),
-        baseCurrency: String(form.get("baseCurrency") ?? "USD").toUpperCase(),
-        rateTtlMinutes: Math.max(1, Number(form.get("rateTtlMinutes") ?? 15)),
+        baseCurrency: currencyInput,
+        // Q3 fix (audit #2): floor raised from 1 to 15 minutes. A 1-minute
+        // TTL let a browsing merchant burn ~60 provider calls/hour.
+        rateTtlMinutes: Math.max(15, Number(form.get("rateTtlMinutes") ?? 15)),
         scheduleEnabled: form.get("scheduleEnabled") === "on",
         scheduleInterval: Math.max(
           15,
@@ -69,18 +73,32 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       },
       create: {
         shop,
-        rateProvider: String(form.get("rateProvider") ?? "mock"),
+        rateProvider: providerInput,
         rateApiKey: apiKeyInput || null,
         rateCity: rateCityInput || null,
-        baseCurrency: String(form.get("baseCurrency") ?? "USD").toUpperCase(),
+        baseCurrency: currencyInput,
       },
     });
-    // Bust the cache so the new provider takes effect immediately.
-    await prisma.metalRateCache.deleteMany({ where: { shop } });
+    // Q2 fix (audit #2): only bust the rate cache when something that
+    // actually affects the rates changed. It used to be unconditional, so
+    // toggling the schedule switch forced a fresh provider API call.
+    const rateSourceChanged =
+      existing.rateProvider !== providerInput ||
+      existing.baseCurrency !== currencyInput ||
+      Boolean(apiKeyInput) ||
+      (providerInput === "metalpriceapi" &&
+        (existing.rateCity ?? "") !== rateCityInput);
+    if (rateSourceChanged) {
+      await prisma.metalRateCache.deleteMany({ where: { shop } });
+    }
     return { ok: true, message: "Settings saved" };
   }
 
   if (intent === "saveManualRates") {
+    // M-a fix (audit #2): tag each manual rate with the currency it was
+    // entered in, so a later base-currency change can't silently relabel
+    // the numbers (₹6,800/g is not $6,800/g).
+    const { baseCurrency } = await getSettings(shop);
     for (const metal of SUPPORTED_METALS) {
       const raw = String(form.get(`rate_${metal}`) ?? "").trim();
       if (!raw) continue;
@@ -88,8 +106,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (Number.isNaN(pricePerGram) || pricePerGram <= 0) continue;
       await prisma.manualRate.upsert({
         where: { shop_metal: { shop, metal } },
-        update: { pricePerGram },
-        create: { shop, metal, pricePerGram },
+        update: { pricePerGram, currency: baseCurrency },
+        create: { shop, metal, pricePerGram, currency: baseCurrency },
       });
     }
     await prisma.metalRateCache.deleteMany({ where: { shop } });
@@ -174,7 +192,7 @@ export default function Settings() {
               <s-number-field
                 label="Rate cache (minutes)"
                 name="rateTtlMinutes"
-                min={1}
+                min={15}
                 value={String(settings.rateTtlMinutes)}
                 details="On a free MetalPriceAPI plan (~100 requests/month) keep this at 480+ (8h) or higher. Lower it only if you're on a paid plan and need fresher rates."
               ></s-number-field>
@@ -241,6 +259,14 @@ export default function Settings() {
       )}
 
       <s-section slot="aside" heading="About scheduling">
+        {settings.scheduleEnabled && settings.rateProvider === "mock" && (
+          <s-banner tone="warning" heading="Scheduling on demo rates">
+            Automatic sync is on while the provider is still Demo rates —
+            scheduled runs will push simulated prices, not real market
+            prices. Switch to a live source or Manual entry before relying
+            on this on a real store.
+          </s-banner>
+        )}
         {!settings.scheduleEnabled && settings.lastScheduleError && (
           <s-banner tone="warning" heading="Automatic sync turned itself off">
             After several failed attempts in a row, scheduling was

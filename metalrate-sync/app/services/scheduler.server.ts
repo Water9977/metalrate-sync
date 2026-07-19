@@ -20,6 +20,14 @@ import { isSyncDue } from "./scheduling.server";
 const TICK_MS = 60_000;
 const runningShops = new Set<string>();
 
+// Q4 fix (audit #2): cap concurrent shop syncs per tick. Without this,
+// 50 shops due on the same minute meant 50 simultaneous provider fetches,
+// Shopify mutation bursts, and DB write storms. Shops beyond the cap are
+// simply picked up on the next tick (isSyncDue stays true) — worst case a
+// due shop starts a few minutes late, which is invisible at the 15min+
+// intervals the product allows.
+const MAX_CONCURRENT_SYNCS = 3;
+
 /**
  * H2 follow-up: expired-offline-token auto-refresh is handled by the
  * framework itself (verified in shopify-app-react-router's
@@ -86,6 +94,7 @@ async function tick(): Promise<void> {
   const now = Date.now();
 
   for (const settings of due) {
+    if (runningShops.size >= MAX_CONCURRENT_SYNCS) break;
     if (runningShops.has(settings.shop)) continue; // previous run for this shop still in flight
     if (!isSyncDue(settings.lastScheduledSyncAt, settings.scheduleInterval, now)) {
       continue;

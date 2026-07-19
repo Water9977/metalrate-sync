@@ -45,23 +45,60 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const name = String(form.get("name") ?? "").trim();
     if (!name) return { ok: false, message: "Name is required" };
 
+    // P2 fix (audit #2): every numeric field used to be a bare Number()
+    // coercion with no validation — an EMPTY purity field coerced to 0
+    // (`?? 1` only fires on null, and an empty form field is ""), which
+    // silently zeroed every price computed with the formula. Negative and
+    // NaN inputs were stored too (NaN reached Shopify as the literal
+    // string "NaN"). Parse with a real fallback for blank fields, then
+    // range-check everything before anything touches the database.
+    const num = (field: string, fallback: number): number => {
+      const raw = String(form.get(field) ?? "").trim();
+      return raw === "" ? fallback : Number(raw);
+    };
     const stopLossRaw = String(form.get("stopLossPerGram") ?? "").trim();
     const data = {
       name,
       metal: String(form.get("metal") ?? "XAU"),
-      purityFactor: Number(form.get("purityFactor") ?? 1),
+      purityFactor: num("purityFactor", 1),
       makingChargeType: String(form.get("makingChargeType") ?? "flat"),
-      makingChargeValue: Number(form.get("makingChargeValue") ?? 0),
-      wastagePct: Number(form.get("wastagePct") ?? 0),
+      makingChargeValue: num("makingChargeValue", 0),
+      wastagePct: num("wastagePct", 0),
       markupType: String(form.get("markupType") ?? "percent"),
-      markupValue: Number(form.get("markupValue") ?? 0),
-      taxPct: Number(form.get("taxPct") ?? 0),
-      roundingStep: Number(form.get("roundingStep") ?? 0),
+      markupValue: num("markupValue", 0),
+      taxPct: num("taxPct", 0),
+      roundingStep: num("roundingStep", 0),
       endsIn99: form.get("endsIn99") === "on" || form.get("endsIn99") === "true",
-      minChangeAmount: Number(form.get("minChangeAmount") ?? 0),
+      minChangeAmount: num("minChangeAmount", 0),
       stopLossPerGram: stopLossRaw === "" ? null : Number(stopLossRaw),
       active: form.get("active") === "on" || form.get("active") === "true",
     };
+
+    const invalid = (message: string) => ({ ok: false, message });
+    if (!Number.isFinite(data.purityFactor) || data.purityFactor <= 0 || data.purityFactor > 1) {
+      return invalid("Purity must be a number between 0 and 1 (e.g. 0.916 for 22K).");
+    }
+    if (!Number.isFinite(data.makingChargeValue) || data.makingChargeValue < 0) {
+      return invalid("Making charge can't be negative.");
+    }
+    if (!Number.isFinite(data.wastagePct) || data.wastagePct < 0 || data.wastagePct > 100) {
+      return invalid("Wastage must be between 0 and 100 percent.");
+    }
+    if (!Number.isFinite(data.markupValue) || data.markupValue < 0) {
+      return invalid("Markup can't be negative.");
+    }
+    if (!Number.isFinite(data.taxPct) || data.taxPct < 0 || data.taxPct > 100) {
+      return invalid("Tax must be between 0 and 100 percent.");
+    }
+    if (!Number.isFinite(data.roundingStep) || data.roundingStep < 0) {
+      return invalid("Rounding step can't be negative.");
+    }
+    if (!Number.isFinite(data.minChangeAmount) || data.minChangeAmount < 0) {
+      return invalid("Minimum change can't be negative.");
+    }
+    if (data.stopLossPerGram != null && (!Number.isFinite(data.stopLossPerGram) || data.stopLossPerGram <= 0)) {
+      return invalid("Stop-loss must be a positive number, or left empty.");
+    }
 
     try {
       if (id) {

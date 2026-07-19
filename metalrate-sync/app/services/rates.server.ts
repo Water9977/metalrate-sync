@@ -21,11 +21,31 @@ export async function getSettings(shop: string) {
 }
 
 /**
+ * Q1 fix (audit #2): single-flight per shop. Without this, concurrent
+ * loaders (dashboard + preview in two tabs, a scheduler tick landing while
+ * the merchant browses) each independently saw a stale cache and each fired
+ * a live provider call — 2-5x duplicate API calls at every TTL boundary.
+ * All concurrent callers now share one in-flight promise. In-process only,
+ * which matches the app's documented single-instance deployment (L7).
+ */
+const inflightRates = new Map<string, Promise<MetalRate[]>>();
+
+export function getRates(shop: string): Promise<MetalRate[]> {
+  const existing = inflightRates.get(shop);
+  if (existing) return existing;
+  const promise = getRatesUncoalesced(shop).finally(() => {
+    inflightRates.delete(shop);
+  });
+  inflightRates.set(shop, promise);
+  return promise;
+}
+
+/**
  * Returns current rates for all supported metals, respecting the shop's
  * configured provider and cache TTL. Never throws on provider failure —
  * falls back to the last cached rate and flags staleness via fetchedAt.
  */
-export async function getRates(shop: string): Promise<MetalRate[]> {
+async function getRatesUncoalesced(shop: string): Promise<MetalRate[]> {
   const settings = await getSettings(shop);
   const cached = await prisma.metalRateCache.findMany({
     where: { shop, currency: settings.baseCurrency },
@@ -221,7 +241,16 @@ async function fetchManualRates(
       "Manual rates selected but none entered yet. Add them in Settings.",
     );
   }
-  return rows.map((row) => ({
+  // M-a fix (audit #2): rows are tagged with the currency they were entered
+  // in. If the store's base currency changed since, refuse to silently
+  // relabel the numbers (a ₹6,800/g rate is not a $6,800/g rate).
+  const matching = rows.filter((row) => row.currency === currency);
+  if (matching.length === 0) {
+    throw new Error(
+      `Manual rates were entered in ${rows[0].currency}, but the store currency is now ${currency}. Re-enter them in Settings.`,
+    );
+  }
+  return matching.map((row) => ({
     metal: row.metal as MetalCode,
     currency,
     pricePerGram: row.pricePerGram,

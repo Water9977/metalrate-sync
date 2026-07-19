@@ -6,31 +6,32 @@ Last updated: 2026-07-19 (evening — audit #2 findings added).
 
 ---
 
-## 🐛 Bugs & loopholes — OPEN (from audit #2, 2026-07-19)
+## 🐛 Bugs & loopholes — audit #2 (2026-07-19) — FIXED same day
 
-Fresh audit pass after all audit-#1 fixes shipped. Full detail per finding in [research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md). Ordered by priority.
+Fresh audit pass after all audit-#1 fixes shipped. Full detail per finding in [research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md). Fix pass verified with an 8-assertion snapshot round-trip test against the real DB; typecheck + build clean.
 
 **Quota-burn class (the "preview & sync drains the limit" question):**
-- [ ] Q1 — no single-flight lock on `getRates`: concurrent page loads each fire a provider API call at every TTL expiry (2–5x duplicate calls)
-- [ ] Q2 — every Settings save wipes the rate cache unconditionally → guaranteed API refetch even when nothing rate-related changed
-- [ ] Q3 — merchant can set rate TTL as low as 1 minute → quota gone in <2h; lethal once the shared app-owned key ships
-- [ ] Q4 — scheduler tick launches all due shops simultaneously, unbounded concurrency, N shops = N provider fetches for the same global rates
-- [ ] Q5 — **the structural fix for the whole class**: app-owned key + global (not per-shop) rate cache + server-controlled fetch cadence + plan-gated manual refresh (2/day Starter, 5/day Pro). Kills Q1–Q4 and IS the plan-limit mechanism. Do this as one build.
+- [x] Q1 — single-flight lock added to `getRates`: concurrent page loads now share one in-flight provider call
+- [x] Q2 — Settings save only busts the rate cache when provider/key/city/currency actually changed
+- [x] Q3 — rate TTL floor raised 1 → 15 minutes (server-side clamp + UI min)
+- [x] Q4 — scheduler tick capped at 3 concurrent shop syncs; overflow shops picked up next tick
+- [ ] Q5 — **structural launch fix, deliberately deferred with the App Store prep** (bundles with removing the BYO key field, which stays for now per decision 2026-07-19): app-owned key + global rate cache + server-controlled fetch cadence + plan-gated manual refresh (2/day Starter, 5/day Pro). Kills the quota class permanently and IS the plan-limit mechanism.
 
 **Product-safety:**
-- [ ] P1 (HIGH) — mock/demo rates are the default provider and nothing blocks Apply or scheduling with them → real store can sync fake prices. Gate it.
-- [ ] P2 (MED-HIGH) — formula form accepts empty/NaN/negative numbers; empty purity coerces to 0 and zeroes prices. Server-side validation needed.
-- [ ] P3 — Apply payload is client-trusted; forged payload can poison the audit-trail rateSnapshot / bypass staleness. Fix = server-side preview storage (bundles with S1).
-- [ ] P4 — `shop/redact` GDPR wipe misses the `BulkCatalogJob` table (one line).
+- [x] P1 — demo rates now loudly gated: warning banner on Preview, two-click "Really apply DEMO prices?" confirm on Apply, warning banner when scheduling is on with mock provider. (Hard block deferred to launch when the app-owned live key exists — mock stays the dev/reviewer path for now.)
+- [x] P2 — full server-side numeric validation on formula save (empty purity no longer coerces to 0 and zeroes prices; NaN/negative rejected with clear messages) + weight input validation on product save
+- [x] P3 — Apply no longer trusts the client: preview stored server-side (`PreviewSnapshot` table, new migration), Apply sends just a snapshot id, staleness checked against server-stored timestamps, snapshot deleted after apply (double-apply becomes a clean error)
+- [x] P4 — `shop/redact` now also wipes `PreviewSnapshot`, `BulkCatalogJob`, and `Session` rows
 
 **Scale (10k-SKU pitch):**
-- [ ] S1 — Apply round-trips the whole preview through the browser (multi-MB at 10k variants) + preview table has no pagination. Same fix as P3.
+- [x] S1 (payload half) — Apply request is now a few bytes regardless of catalog size (same fix as P3)
+- [ ] S1 (UI half) — preview table still renders all rows unpaginated; virtualize/paginate before the 10k live validation
 - [ ] S2 — bulk catalog JSONL fully buffered in memory (fine to ~50k variants, streaming later)
-- [ ] S3 — History details silently cap at 500 items, no indicator
+- [x] S3 — History details now show "first 500 of N" when a run exceeds the cap
 
 **Cosmetic:**
-- [ ] M-a — baseCurrency change relabels manual rates without conversion
-- [ ] M-b — `lastPrice` from client hidden field, can be stale
+- [x] M-a — manual rates now tagged with entry currency; base-currency change surfaces a clear "re-enter rates" error instead of silently relabeling
+- [ ] M-b — `lastPrice` from client hidden field, can be stale — accepted (next sync corrects it, fix needs an extra Admin API call per save)
 
 ## 🐛 Bugs — CLOSED (audit #1, 2026-07-18)
 
@@ -112,11 +113,27 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 ---
 
-## Getting the app to Chris — the actual plan
+## Getting the app to Chris — detailed steps
 
-No App Store review needed for this. Two things happen in parallel, not sequentially:
+No App Store review needed for this. Two tracks in parallel: Chris gets a **Custom-distribution second app** now; the main `metalrate-sync` app stays distribution-unset for the future public listing (that choice is irreversible — never set the main app to Custom).
 
-1. **Chris access (do this soon):** create a second app in the Dev Dashboard (same codebase, new client_id), set **Custom distribution** on *that* one, generate its install link, send to Chris. Installs directly on his real live store, no review, no waiting. Keep the main `metalrate-sync` app's distribution unset so it stays eligible for a future Public App Store listing.
-2. **Public launch track (do this over time):** work the "Launch / App Store submission TODOs" list above on the main app. Billing is the biggest gap. No rush — this runs independently of Chris.
+**Step-by-step (needs your Dev Dashboard login, ~15 min):**
 
-Chris never needs to touch the App Store, review, or wait on anything — his path is entirely the Custom-distribution link once that second app exists.
+1. **Create the second app.** Dev Dashboard ([dev.shopify.com/dashboard](https://dev.shopify.com/dashboard)) → Apps → Create app. Name it something like `MetalRate Sync (Liquid Bullion)`. This gives you a new client_id + client secret — same codebase will serve it.
+2. **Point it at the same Railway deployment.** In the new app's configuration set:
+   - App URL: `https://metalrate-sync-app-production.up.railway.app`
+   - Redirect URL: `https://metalrate-sync-app-production.up.railway.app/auth/callback`
+   - Scopes: `write_products`
+   - Webhooks: same three subscriptions as the main app (app/uninstalled, app/scopes_update, compliance trio) — mirror what's in `shopify.app.toml`.
+   ⚠️ **One Railway service can only hold one SHOPIFY_API_KEY/SECRET pair.** Easiest correct setup: deploy a **second Railway service** from the same repo (Railway → New Service → same GitHub repo), give it the new app's API key + secret + same DATABASE_URL + SHOPIFY_APP_URL pointing at its own generated domain, and use THAT domain in step 2's URLs instead. ~5 extra minutes, zero code changes. (Alternative — swapping the main service's env vars to the new app — breaks your dev-store install; don't.)
+   - The `SHOPIFY_API_SECRET` for the new app: enter it directly in Railway's dashboard yourself, same as before. I never touch it.
+3. **Set distribution.** New app → Distribution → Choose **Custom distribution**. Enter Chris's store domain (`liquidgoldnuggets.myshopify.com` — confirm the exact .myshopify.com domain with him first; the public domain is liquidgoldnuggets.com but the field wants the myshopify one). Leave "Allow multi-store installs" unchecked.
+4. **Generate the install link** (button right there after entering the domain). Copy it.
+5. **Email the link to Chris** with one line of instructions: "open this while logged into your Shopify admin, click Install." No review, no waiting — it installs immediately on his real store.
+6. **After he installs:** his shop row appears in the shared Postgres. He starts on demo rates (safe — the P1 gate now makes applying demo prices require an explicit double-confirm). Walk him via email through Settings → provider. His own MetalPriceAPI free key or Manual entry both work today.
+
+**Before sending the link (small but real):**
+- [ ] Redeploy Railway so the audit-2 fixes (including the demo-rate safety gate) are live before a real store touches it.
+- [ ] Confirm with Chris his exact `.myshopify.com` domain.
+
+**Public launch track (runs independently):** the "Launch / App Store submission TODOs" above, on the main app. Billing is the biggest gap. Q5 (app-owned key + global cache) lands with that work.

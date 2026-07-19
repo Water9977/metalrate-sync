@@ -95,7 +95,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "saveVariant") {
     const variantId = String(form.get("variantId"));
-    const weightInput = Number(form.get("weightInput") ?? 0);
+    const weightRaw = String(form.get("weightInput") ?? "").trim();
+    const weightInput = weightRaw === "" ? 0 : Number(weightRaw);
+    // P2 fix (audit #2): NaN/negative weights used to be stored as-is
+    // (Postgres accepts NaN floats) — reject them at the door instead.
+    if (!Number.isFinite(weightInput) || weightInput < 0) {
+      return { ok: false, message: "Weight must be a non-negative number" };
+    }
     const weightUnit = String(form.get("weightUnit") ?? "g");
     const weightGrams = weightInput * gramsPerUnit(weightUnit);
     const formulaIdRaw = String(form.get("formulaId") ?? "");

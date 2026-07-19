@@ -20,7 +20,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (selectedRunId) {
     selectedRun = await prisma.syncRun.findFirst({
       where: { shop, id: Number(selectedRunId) },
-      include: { items: { orderBy: { id: "asc" }, take: 500 } },
+      include: {
+        items: { orderBy: { id: "asc" }, take: 500 },
+        _count: { select: { items: true } },
+      },
     });
   }
 
@@ -38,6 +41,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     selectedRun: selectedRun
       ? {
           id: selectedRun.id,
+          totalItemCount: selectedRun._count.items,
           rateSnapshot: safeParseRates(selectedRun.rateSnapshot),
           items: selectedRun.items.map((item) => ({
             id: item.id,
@@ -135,6 +139,13 @@ export default function History() {
       {selectedRun && (
         <s-section heading={`Run #${selectedRun.id} details`}>
           <s-stack direction="block" gap="base">
+            {selectedRun.totalItemCount > selectedRun.items.length && (
+              // S3 fix (audit #2): the 500-item cap used to be silent.
+              <s-text color="subdued">
+                Showing the first {selectedRun.items.length} of{" "}
+                {selectedRun.totalItemCount} items in this run.
+              </s-text>
+            )}
             <s-stack direction="inline" gap="base">
               {selectedRun.rateSnapshot.map((rate) => (
                 <s-badge key={rate.metal} tone="info">
