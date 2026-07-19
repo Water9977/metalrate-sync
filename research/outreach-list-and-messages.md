@@ -32,20 +32,26 @@
 | Cardiff Gold | cardiffgold.co.uk | sales@cardiffgold.co.uk | UK dealer, gold silver platinum palladium and coins |
 | Mount Vernon Coin | mountvernoncoinco.com | mountvernoncoinco.com/pages/contact-us | Reviewed GPE, US collector coins and metals |
 
-## Messages
+## Messages — updated 2026-07-19, app is built and live now
 
-Two templates. Send by email where you have one, otherwise use the contact form or a DM on Instagram. Keep it personal, mention something specific from their store rather than copy pasting identical text everywhere.
+Rewritten now that MetalRate Sync is real and deployed (not "once it's ready" anymore). Send by email where you have one, otherwise use the contact form or a DM on Instagram. Keep it personal, mention something specific from their store rather than copy pasting identical text everywhere. **No calls asked for anywhere below, on purpose** — everything is designed to be evaluated async via the demo links/screenshots.
+
+**Assets to attach/link in every outreach email** (same ones sent to Chris, reusable — they're generic product demos, not store-specific):
+- The 2 Loom links (formula creation → product assignment → Preview & Sync → live price change → dashboard walkthrough)
+- Bulk import screen screenshot
+- History/audit-trail screenshot
+- Fill these in before sending — see [chris-demo-email-draft-2026-07-19.md](chris-demo-email-draft-2026-07-19.md) for the exact asset list and where the Loom links go.
 
 ### For jewelry stores
 
-Hi, I came across your store and saw you deal with gold pricing for your products. I am building a Shopify app that keeps product prices synced with live gold and silver rates, made to handle bulk updates across many products at once instead of editing one at a time. I already tested it working on a real store. Would you be open to trying it free once it is ready and telling me honestly if it would actually help you. No pressure at all, just trying to build something useful.
+Hi, I came across your store and saw you deal with gold pricing for your products. I built a Shopify app that keeps product prices synced with live gold and silver rates, made to handle bulk updates across many products at once instead of editing one at a time. It's live and running on a real store right now — here's a couple short walkthroughs: [Loom 1], [Loom 2]. Screenshots of the bulk import and history/audit trail attached too. Would you be open to trying it free and telling me honestly if it would actually help you? No pressure at all, just trying to build something useful.
 
 ### For bullion and coin dealers (general)
 
-Hi, I came across your store while looking into how bullion sellers handle live pricing on Shopify. I am building an app that syncs product prices with live spot rates and is built specifically to handle large catalogs reliably without breaking. I already tested the core flow working end to end on a real store. Would you be open to trying it free once it is ready. No pitch here, just trying to figure out if this solves a real problem for you.
+Hi, I came across your store while looking into how bullion sellers handle live pricing on Shopify. I built an app that syncs product prices with live spot rates, made specifically to handle large catalogs reliably without breaking. It's live now — a couple short walkthroughs here: [Loom 1], [Loom 2], plus screenshots of the bulk import and audit trail attached. Would you be open to trying it free? No pitch here, just trying to figure out if this solves a real problem for you.
 
 ### For The Scoin Shop and MintedMarket specifically
 
 Both left public reviews about pricing accuracy and support not responding on their current app. Reference that directly, it is public information they posted themselves, not private data.
 
-Hi, I saw your review about pricing accuracy and support issues with your current gold pricing app. I am building an alternative focused specifically on reliable bulk updates and support that actually answers. It already works end to end on a real store. Would you be open to trying it free once it is ready and telling me if it actually solves the problem you ran into. No pressure, just want to build something that works for people who had that exact experience.
+Hi, I saw your review about pricing accuracy and support issues with your current gold pricing app. I built an alternative focused specifically on reliable bulk updates and support that actually answers — it's live and running end to end on a real store right now. Walkthroughs here: [Loom 1], [Loom 2], plus screenshots of bulk import and the audit trail attached. Would you be open to trying it free and telling me if it actually solves the problem you ran into? No pressure, just want to build something that works for people who had that exact experience.

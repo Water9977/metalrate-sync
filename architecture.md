@@ -12,7 +12,7 @@ App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sy
 
 ## Current status
 
-**Stage: Deployed and live, code audit fully closed out.** App code lives in [metalrate-sync/](metalrate-sync/). Partner account exists, dev store created (`metal-rate-sync-testing-store.myshopify.com`), app installed and confirmed working against the real deployed URL. **First live test succeeded 2026-07-15** (formula → preview → apply → real Shopify price change). **Deployed to Railway 2026-07-18** — the app now runs on a persistent host (`https://metalrate-sync-app-production.up.railway.app`) with a managed Postgres database, not a local dev tunnel. See "Deployed to Railway" below for the full story. A code audit ([research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md)) found 4 HIGH / 7 MEDIUM / 8 LOW issues — **all 18 now resolved** (H4 fixed during deploy; H1/H2/H3 and every MEDIUM/LOW fixed in a dedicated pass same day, see "Code audit fix pass" below). Typecheck and production build both clean after every fix.
+**Stage: Deployed and live, code audit fully closed out.** App code lives in [metalrate-sync/](metalrate-sync/). Partner account exists, dev store created (`metal-rate-sync-testing-store.myshopify.com`), app installed and confirmed working against the real deployed URL. **First live test succeeded 2026-07-15** (formula → preview → apply → real Shopify price change). **Deployed to Railway 2026-07-18** — the app now runs on a persistent host (`https://metalrate-sync-app-production.up.railway.app`) with a managed Postgres database, not a local dev tunnel. See "Deployed to Railway" below for the full story. A code audit ([research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md)) found 4 HIGH / 7 MEDIUM / 8 LOW issues — **all 18 now resolved** (H4 fixed during deploy; H1/H2/H3 and every MEDIUM/LOW fixed in a dedicated pass same day, see "Code audit fix pass" below). Typecheck and production build both clean after every fix.
 
 ## How it works (plain English)
 
@@ -103,23 +103,25 @@ Trimmed `INDIA_RATE_CITIES` from all 34 API-supported cities down to **4 major m
 
 **Restating the hard constraint, since it came up again:** "cities with all metal prices" tops out at gold+silver, everywhere, for every provider — platinum and palladium have zero city-level pricing data anywhere in the world. This isn't a narrower search fixing it, it's how those two metals trade (arbitrage-free global commodities, confirmed via independent research on 2026-07-16). The 4 curated cities are already the maximum any city can offer.
 
-## Pricing — revised 2026-07-18 evening ($25/$45, no permanent free tier)
+## Pricing — revised 2026-07-19 ($30/$50, sync-frequency gated, no permanent free tier)
 
-Two revisions in one day: first $14.99/$29.99 (proposal) → $30/$50 (user's "start at $30") → now **$25/$45** after user reconsidered with a $25–30 floor. Checked against Shopify's own billing best-practices docs this round.
+Three revisions across two days: $14.99/$29.99 (proposal) → $30/$50 (user's "start at $30") → $25/$45 (user reconsidered with a $25–30 floor) → now **$30/$50** (user's latest call, adding SKU cap + sync-frequency gating as the tier lever instead of just variant count).
 
 | Plan | Price | Limits |
 |---|---|---|
 | Free trial | **14 days** | full features (Shopify's docs explicitly recommend 14 days) |
-| **Starter** | **$25/mo** | up to 1,000 variants, twice-daily auto-sync, all formula features, CSV import |
-| **Growth** | **$45/mo** | up to 25,000 variants, India city rates, priority support, future: eBay/POS |
+| **Starter** | **$30/mo** | up to 500 SKUs, auto-sync **twice a day**, all formula features, CSV import |
+| **Pro** | **$50/mo** | unlimited SKUs, auto-sync **up to 5x/day**, priority support, India city rates, future: eBay/POS |
 
-Why this beats $30/$50: Starter at $25 restores a real price wedge under Gold Feed's $40 (the Chris-switch offer), stays above the junk tier ($9.99 apps), and satisfies the $25–30 floor. Billing itself via **Shopify App Pricing** (plans defined in the app submission form, Shopify hosts the plan-selection page and handles trials/proration/upgrades — no Billing API code needed; docs confirm up to 8 public + 15 private plans, test on a dev store before publishing).
+Sanity-checked against the competitive set ([competition-analysis.md](competition-analysis.md)): this lands almost exactly on **Metal Updater's** $34.99/$49.99 (5 formulas/250 SKU → unlimited/unlimited + priority support) — the closest real analog in the whole niche, and one of only two apps with sub-10 review counts that's still 5.0★. $30 Starter still beats Gold Feed's $40 (the Chris-switch pitch) while sitting comfortably above the race-to-the-bottom $9.99 tier.
 
-**Free tier: recommend NO permanent free plan at launch.** Reasoning: (a) target buyers (bullion/by-weight) treat repricing as must-have infrastructure — a 14-day trial is enough to prove it, they don't need free-forever to be convinced; (b) a free plan attracts exactly the skeptical fashion-jewelry segment from validation — support load without revenue, and support time is the app's real cost; (c) every all-free competitor in the niche is an abandoned side project (competition analysis); (d) dev/partner stores get apps free automatically anyway. The one genuine upside forgone: a free plan earns the "Free plan available" badge in App Store search results, which helps discovery — revisit if install volume is weak after launch. Private plans (15 allowed) cover the Chris case: give design partners a free-for-life private plan without a public free tier.
+**Known gap: sync-frequency and SKU-count limits aren't enforced in code yet.** `scheduleInterval` currently accepts any value ≥15 minutes regardless of plan, and there's no SKU-count gate anywhere. Fine for a private demo/design-partner period; needs building before this goes on general availability with real paying tiers (Shopify App Pricing itself doesn't enforce feature gates — that's on the app).
+
+**Free tier: still recommend NO permanent free plan at launch** — reasoning unchanged from the $25/$45 pass: target buyers treat repricing as infrastructure, 14 days proves it; a free plan draws the skeptical fashion-jewelry segment from validation without paying for the support load; every all-free competitor in the niche is an abandoned side project; dev/partner stores get the app free automatically anyway. Private plans (15 allowed under Shopify App Pricing) cover Chris directly: free-for-life private plan as thanks for being design partner #1, without a public free tier.
 
 ## Full code audit performed (2026-07-18) — report only, then a full fix pass same day
 
-Complete findings in [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md). 4 HIGH, 7 MEDIUM, 8 LOW. Initially report-only (H4 fixed early, forced by deploying); **all remaining 17 items fixed in a dedicated pass later the same day** — see "Code audit fix pass" below for what actually changed.
+Complete findings in [research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md). 4 HIGH, 7 MEDIUM, 8 LOW. Initially report-only (H4 fixed early, forced by deploying); **all remaining 17 items fixed in a dedicated pass later the same day** — see "Code audit fix pass" below for what actually changed.
 
 ## Code audit fix pass (2026-07-18, evening) — all 18 items closed
 
@@ -168,6 +170,10 @@ Went from "runs on a dev tunnel" to a real persistent URL in one session. Full c
 
 **Cost note**: Railway's "free tier" is a one-time trial credit, not an ongoing free plan — expect ~$5/mo (Hobby) once that's used up. Postgres add-on cost is included in that, not separate.
 
+## Demo readiness note (2026-07-19)
+
+2 Looms recorded: formula creation, product-formula assignment, preview & sync, live price change, dashboard walkthrough. **Gap flagged**: neither Loom description mentions actually running the bulk import flow live (a static screenshot of the upload screen was sent separately) or showing the History audit-trail page — those two are the actual differentiators against Gold Feed (his current $40/mo pain point is bulk-import reliability; the audit trail is the "doesn't fail silently" pitch). Recommend either a short 3rd clip covering both, or narrating them live on the call before/after sharing the Looms, rather than relying on the screenshot alone.
+
 ## Is this ready to show Chris? (honest answer)
 
 **Ready to screen-share as a live proof-of-concept — not ready to hand him for real use on his real store yet.** Be clear about that distinction with him. Specifically:
@@ -192,6 +198,43 @@ Went from "runs on a dev tunnel" to a real persistent URL in one session. Full c
 - No billing — fine for a private design-partner test, not fine for anyone else.
 - Free-tier API quota is fragile under real testing volume (see above) — bump the cache TTL in Settings before heavy testing.
 - Test data is still the joke Snowboard — that's a 2-minute manual fix inside the Shopify admin, genuinely needs a human's hands (see TODO).
+
+## App Store submission checklist (fact-checked 2026-07-19 against live shopify.dev docs)
+
+User wants to go straight for Public App Store submission rather than a Custom-distribution workaround. Pulled the current requirements directly from shopify.dev (not memory) since distribution/review mechanics have changed multiple times. **Key tension to be clear-eyed about**: submitting Public does *not* get Chris onto his real store any faster — pre-approval, Public-track apps can only be installed on stores you own/control (dev stores via the Dev Dashboard's "Install app" button), not an arbitrary external live store. Only Custom distribution installs on someone else's real live store without review. These two goals (pursue Public listing + get Chris live access now) aren't mutually exclusive — do both in parallel, per the item 1 TODO above.
+
+**Irreversible first decision**: distribution method (Public vs Custom) is chosen once in the Dashboard and can never be changed after. Confirm nothing's been selected yet for `metalrate-sync` before touching this.
+
+**Blocking — must build before submission:**
+- [ ] **Billing via Shopify App Pricing or the Billing API.** Not implemented yet. Apps using off-platform billing can't be distributed at all. This is the single biggest remaining code gap versus the checklist.
+- [ ] Plan-limit enforcement (SKU cap, sync-frequency cap) — not strictly a review requirement, but you can't honestly charge $30/$50 tiers without it (see TODO item 2 above).
+
+**Configuration (Dev Dashboard, mostly quick):**
+- [ ] App icon: 1200×1200px, JPEG or PNG.
+- [ ] Emergency developer contact: email + phone number (for critical technical issues Shopify needs to reach you about).
+- [ ] Confirm all app URLs avoid the words "Shopify" or "Example" (the Railway domain already passes this).
+- [x] Compliance webhooks (customers/data_request, customers/redact, shop/redact) — already implemented and correct, see Codebase map below.
+
+**App Store listing content:**
+- [ ] Unique app name, consistent between `shopify.app.toml` and the submission form — "MetalRate Sync" should clear this, but double-check no existing app collides.
+- [ ] 3+ screenshots, 1600×900 (16:9), each showing a genuinely different feature/view — no desktop chrome/browser frame, no duplicate-looking shots (a March 2026 rule change, actively enforced).
+- [ ] Feature image (1600×900) or a 2-3 min promotional video (not instructional — screencasts capped at 25% of the video). The two Chris Looms are walkthrough-style, not this — a separate short promo cut would be needed for the actual listing.
+- [ ] **Demo store URL** — a dev store link showing the app live, with contextual instructions. Fixing the Snowboard test data (TODO item 3) doubles as prepping this.
+- [ ] Support email address (required, always) — recommend a real domain-backed address (`support@yourdomain.com`) over a bare Gmail; optionally a support-portal URL too.
+- [ ] **Privacy policy URL** — needs to be hosted somewhere; this is the main place a domain earns its keep for submission itself, not just marketing.
+- [ ] Pricing entered *only* in the designated Pricing Details section — never in the app icon, screenshots, or listing copy body.
+- [ ] Sales-channel/geography install-eligibility flags set correctly (e.g. flag if Online Store channel is required) to avoid ineligible installs and bad reviews.
+- [ ] Protected customer data: opt out (app doesn't need PII/customer scopes — matches the existing "avoid PII scopes" decision above).
+
+**Review prep:**
+- [ ] Clear setup instructions + a **complete screencast** for the reviewer covering setup end-to-end (broader than the Chris Looms — must show the reviewer everything, not just the happy-path highlights).
+- [ ] If MetalPriceAPI is core to what's being reviewed, either provide working test credentials or make sure the review path works fully on the built-in **mock** provider (safer — no real key handed to Shopify).
+- [ ] Run the Partner/Dev Dashboard's automated pre-submission checks and clear every flag before submitting — failing them repeatedly risks a temporary submission suspension.
+- [ ] Zero web errors (404/500) and zero UI bugs anywhere reachable during review — even "minor" ones can block approval, not just critical ones.
+
+**Timeline**: not a fixed number in Shopify's own docs (varies by queue + issues found) — Built for Shopify's *annual* re-review takes "a few days to a week" as a reference point, but first-time app review can run longer, especially with back-and-forth. Submit early, expect iteration.
+
+**Domain question — direct answer**: not strictly *required* to buy one to submit (the privacy policy and demo-store URLs just need to be hosted *somewhere*, and a free host would technically clear the review checklist). But recommended anyway, for reasons beyond the checklist: (1) a real domain is where the privacy policy + support page + eventual pricing/marketing page for SEO live, serving double duty for both the submission requirement and organic discovery outside App Store search; (2) the competitive research already on file shows several rivals' credibility visibly suffers from placeholder/broken sites — a real domain is cheap, direct differentiation; (3) already on the TODO list (item 7) independent of this conversation. Buy it before drafting the listing, not after — the privacy policy URL goes straight into the submission form.
 
 ## Codebase map (metalrate-sync/)
 
@@ -265,27 +308,29 @@ Split by who actually has to act — most of the code/research-only backlog got 
 
 **Needs the user specifically:**
 
-1. [ ] Replace the joke Snowboard test data with 2-3 real gold/silver products (weight, SKU) directly in the Shopify admin — needs your login, not something to script blind against real store data.
-2. [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency) — show him the live proof, now on a real URL. Outreach list + messages for other prospects: [research/outreach-list-and-messages.md](research/outreach-list-and-messages.md).
-3. [ ] Billing setup via Shopify App Pricing — configured through the Dev Dashboard UI, needs your login. Pricing decided: $25/$45, see below.
-4. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key — needs a purchase decision.
-5. [ ] Buy a domain before App Store submission (not needed to keep building — cheap insurance for a support email + privacy policy page that doesn't look like the sketchier competitors' placeholder sites).
-6. [ ] Rotate the MetalPriceAPI key and the Shopify client secret — both were exposed in chat/screenshots during setup this week. Not urgent, good hygiene once things are stable.
+1. [ ] **App distribution decision for getting Chris real access (2026-07-19, urgent-ish).** Confirmed against current Shopify docs: unpublished apps no longer exist as a category (deprecated 2019/2022) — an app is either Public (App Store, needs review before any merchant installs) or Custom (installs on one real live store via a generated link, no review, but **irreversible** — once an app is set to Custom it can never later become a Public App Store listing). Recommendation: don't set the flagship `metalrate-sync` app to Custom. Create a **second app** in the Dev Dashboard (same codebase, new client_id) as Custom distribution just for Chris's early real-store access, keep the main app undecided/Public-track for the eventual store listing. Needs your Dev Dashboard login to execute.
+2. [ ] **Plan-limit enforcement not built yet** (flagged when reviewing the $30/$50 pricing): `scheduleInterval` currently accepts any value ≥15 min regardless of plan — nothing stops unlimited manual Preview & Sync calls either, which would drain the shared API quota. No SKU-count gate exists anywhere either. Needs building before general billing goes live (fine for Chris's free/private access in the meantime).
+3. [ ] Replace the joke Snowboard test data with 2-3 real gold/silver products (weight, SKU) directly in the Shopify admin — needs your login, not something to script blind against real store data.
+4. [ ] Lock Chris in as committed design partner — demo Looms sent 2026-07-19, awaiting his feedback/answers. Outreach list + messages for other prospects: [research/outreach-list-and-messages.md](research/outreach-list-and-messages.md).
+5. [ ] Billing setup via Shopify App Pricing — configured through the Dev Dashboard UI, needs your login. Pricing decided: $30/$50, see "Pricing" section above.
+6. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key — needs a purchase decision.
+7. [ ] Buy a domain before App Store submission (not needed to keep building — cheap insurance for a support email + privacy policy page that doesn't look like the sketchier competitors' placeholder sites).
+8. [ ] Rotate the MetalPriceAPI key and the Shopify client secret — both were exposed in chat/screenshots during setup this week. Not urgent, good hygiene once things are stable.
 
 **Still open, buildable without the user (not yet started):**
 
-7. [ ] Storefront rate ticker / price breakup theme extension (post-MVP, deliberately deferred this session — it's a genuinely separate component, lower priority than everything above per the original ranking).
-8. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
-9. [ ] True 10k+ scale live-validated against a real seeded catalog (the Bulk Operations code path is built and passes mocked tests, but hasn't been run against an actual 10k-variant store yet — needs either Chris's real catalog or a dedicated seeding run, both of which are bigger asks than this session's scope).
-10. [ ] Split local dev database from the Railway production Postgres — currently sharing one instance, fine pre-launch, not once there are real merchants.
-11. [ ] L1 from the audit (Float → Decimal money fields) — deliberately deferred, see "Code audit fix pass" above for why. Worth doing as its own dedicated pass before real transaction volume, not bundled with anything else.
+9. [ ] Storefront rate ticker / price breakup theme extension (post-MVP, deliberately deferred this session — it's a genuinely separate component, lower priority than everything above per the original ranking).
+10. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
+11. [ ] True 10k+ scale live-validated against a real seeded catalog (the Bulk Operations code path is built and passes mocked tests, but hasn't been run against an actual 10k-variant store yet — needs either Chris's real catalog or a dedicated seeding run, both of which are bigger asks than this session's scope).
+12. [ ] Split local dev database from the Railway production Postgres — currently sharing one instance, fine pre-launch, not once there are real merchants.
+13. [ ] L1 from the audit (Float → Decimal money fields) — deliberately deferred, see "Code audit fix pass" above for why. Worth doing as its own dedicated pass before real transaction volume, not bundled with anything else.
 
 **Done (2026-07-15/16/18):**
-- [x] ~~Code audit fix pass~~ → all 4 HIGH + 7 MEDIUM + 8 LOW items from [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md) resolved (H1/H2/H3 fixed, or documented as a deliberate deferral for L1/L2/L7/L8) — see "Code audit fix pass" above
+- [x] ~~Code audit fix pass~~ → all 4 HIGH + 7 MEDIUM + 8 LOW items from [research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md) resolved (H1/H2/H3 fixed, or documented as a deliberate deferral for L1/L2/L7/L8) — see "Code audit fix pass" above
 - [x] ~~Deploy to persistent hosting~~ → Railway, live, Postgres, confirmed working on the real dev store — see "Deployed to Railway" above
 - [x] ~~Fix H4 (hardcoded SQLite path)~~ → switched to Postgres as part of deploying
 - [x] ~~Click through bulk import in the live browser~~ → confirmed working on the real deployed app
-- [x] ~~Finalize pricing~~ → $25/mo Starter, $45/mo Growth, 14-day trial, no permanent free tier
+- [x] ~~Finalize pricing~~ → $30/mo Starter (500 SKU, 2x/day sync), $50/mo Pro (unlimited, 5x/day, priority support), 14-day trial, no permanent free tier — see "Pricing" section above for the full revision history
 - [x] ~~Create Partner account + dev store~~ (partner account done by user; dev store created; app installed)
 - [x] ~~Decide app name~~ → MetalRate Sync
 - [x] ~~Prove the core loop works end to end~~ → confirmed 2026-07-15 on the real dev store
@@ -323,6 +368,9 @@ Split by who actually has to act — most of the code/research-only backlog got 
   6. Updated this file throughout.
 
   Everything above: typecheck clean, production build clean, checked at every step, not just at the end. What's left in the TODO now is almost entirely things that need the user directly (a login, a purchase, a conversation, or eyes on a live screen) — see the reorganized TODO list above.
-- **2026-07-18 (later)**: Full code audit performed — [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md), 4 HIGH / 7 MEDIUM / 8 LOW, report-only per instruction. Pricing landed at **$25/mo Starter, $45/mo Growth**, 14-day trial, no permanent free tier — see "Pricing" section above for the full reasoning and the two earlier revisions that led here.
-- **2026-07-18 (audit fix pass)**: Worked through all 18 remaining items from [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md) one at a time — fix, typecheck, next — per explicit instruction to hold all git/architecture.md activity until every item was done. H3 (preview/apply price drift) fixed first via a new `applyPreviewedRows` that applies exactly what was previewed instead of recomputing. H2 (scheduler + idle tokens): confirmed via framework source that offline-token auto-refresh already works, added a 5-failure circuit breaker for the one real gap (permanently dead tokens). H1 (rate-cache quota burn): freshness now gates on the most-recent successful update instead of requiring every metal individually fresh, so one chronically-missing metal can't force a live API call on every page load. All 7 MEDIUM items fixed (wrong-provider city wipe, History count reconciliation, weight-unit unit-mismatch trap, search debounce, import file-size cap + duplicate-row dedup, uninstall-disables-scheduling, CSV formula-injection guard). 4 of 8 LOW items fixed (duplicate-name detection via error code not message text, wired up the dead remove-variant button, resource-route rename, dev-machine scheduler guard); the other 4 (Float→Decimal, API-key-in-URL, single-instance scheduler, preview-triggers-fetch) documented as deliberate deferrals rather than code changes — each is explicitly forward-looking/low-severity in the audit's own framing, not an active bug. Full breakdown in "Code audit fix pass" section above. Typecheck and production build clean at the end.
+- **2026-07-18 (later)**: Full code audit performed — [research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md), 4 HIGH / 7 MEDIUM / 8 LOW, report-only per instruction. Pricing landed at **$25/mo Starter, $45/mo Growth**, 14-day trial, no permanent free tier — see "Pricing" section above for the full reasoning and the two earlier revisions that led here.
+- **2026-07-19 (audit #2)**: Second full code audit after the first one's fixes shipped — fresh findings in [research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md) (the file was renamed from the 2026-07-18 audit, which is fully closed and summarized in its appendix). 5 quota-burn loopholes (Q1–Q5: no single-flight on getRates, unconditional cache bust on settings save, 1-min TTL floor, unbounded scheduler concurrency, per-shop cache shape), 4 product-safety items (P1 mock-rates-can-sync-to-real-store is the HIGH; P2 formula numeric validation — empty purity coerces to 0 and zeroes prices), 3 scale items, 2 cosmetic. Tenant isolation deliberately hunted and found clean. Q5 (app-owned key + global cache + server-controlled fetch cadence + plan-gated refresh) is the structural answer to "how do we stop preview & sync burning the quota" AND doubles as the plan-limit enforcement mechanism. All findings tracked as open items in [TODO.md](TODO.md).
+- **2026-07-19 (later)**: Fact-checked the full App Store submission checklist directly against live shopify.dev docs (not memory) — full breakdown in "App Store submission checklist" above. Biggest gap found: billing (Shopify App Pricing/Billing API) isn't implemented at all yet, and it's a hard blocker for submission. Confirmed Public-track apps can't be installed on an external live store pre-approval (only Custom distribution can) — so pursuing App Store submission and getting Chris real access now are parallel tracks, not either/or.
+- **2026-07-19**: Recorded 2 Loom demo walkthroughs (formula creation, product-formula assignment, preview & sync, live price change, dashboard) for Chris — see "Pricing" above for the pricing revision that came out of drafting his email, and the "Demo readiness" note below for gaps to close before sending. Pricing revised a third time: **$30/mo Starter (500 SKU, 2x/day sync) / $50/mo Pro (unlimited, 5x/day, priority support)**, replacing the $25/$45 pass from the day before.
+- **2026-07-18 (audit fix pass)**: Worked through all 18 remaining items from [research/code-audit-2026-07-19.md](research/code-audit-2026-07-19.md) one at a time — fix, typecheck, next — per explicit instruction to hold all git/architecture.md activity until every item was done. H3 (preview/apply price drift) fixed first via a new `applyPreviewedRows` that applies exactly what was previewed instead of recomputing. H2 (scheduler + idle tokens): confirmed via framework source that offline-token auto-refresh already works, added a 5-failure circuit breaker for the one real gap (permanently dead tokens). H1 (rate-cache quota burn): freshness now gates on the most-recent successful update instead of requiring every metal individually fresh, so one chronically-missing metal can't force a live API call on every page load. All 7 MEDIUM items fixed (wrong-provider city wipe, History count reconciliation, weight-unit unit-mismatch trap, search debounce, import file-size cap + duplicate-row dedup, uninstall-disables-scheduling, CSV formula-injection guard). 4 of 8 LOW items fixed (duplicate-name detection via error code not message text, wired up the dead remove-variant button, resource-route rename, dev-machine scheduler guard); the other 4 (Float→Decimal, API-key-in-URL, single-instance scheduler, preview-triggers-fetch) documented as deliberate deferrals rather than code changes — each is explicitly forward-looking/low-severity in the audit's own framing, not an active bug. Full breakdown in "Code audit fix pass" section above. Typecheck and production build clean at the end.
 - **2026-07-18 (deploy)**: **Shipped to persistent hosting.** Chose Postgres over SQLite+volume for H4 (user: "we want our app the best"). Provisioned Railway project + managed Postgres + app service. Fresh Postgres migration generated and applied against the real instance. Hit and fixed three real deploy blockers in sequence: Dockerfile stripping devDependencies before a build step that needs them, `package-lock.json` excluded by the template's own `.gitignore` while the Dockerfile's `npm ci` requires it, and `shopify.app.toml` shipping a live app version still pointed at the placeholder `example.com` instead of the real domain. Caught and corrected a `SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET` mixup from the value's shape without ever displaying the actual secret. Confirmed live with an actual HTTP 200 from the Railway domain, then confirmed again by installing and exercising the app on the real dev store against that URL. Full story: "Deployed to Railway" section above.
