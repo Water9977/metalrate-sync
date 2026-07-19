@@ -12,7 +12,7 @@ App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sy
 
 ## Current status
 
-**Stage: Working end-to-end on a real dev store.** App code lives in [metalrate-sync/](metalrate-sync/). Partner account exists, dev store created (`metal-rate-sync-testing-store.myshopify.com`), app installed. **First live test succeeded 2026-07-15**: formula created → product assigned a weight → Preview & Sync showed the computed price → Apply pushed it to Shopify → confirmed the real product price changed in the Shopify admin. The core loop works.
+**Stage: Deployed and live.** App code lives in [metalrate-sync/](metalrate-sync/). Partner account exists, dev store created (`metal-rate-sync-testing-store.myshopify.com`), app installed and confirmed working against the real deployed URL. **First live test succeeded 2026-07-15** (formula → preview → apply → real Shopify price change). **Deployed to Railway 2026-07-18** — the app now runs on a persistent host (`https://metalrate-sync-app-production.up.railway.app`) with a managed Postgres database, not a local dev tunnel. See "Deployed to Railway" below for the full story. A code audit ([research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md)) found 4 HIGH / 7 MEDIUM / 8 LOW issues, one HIGH (H4) already fixed as part of deploying — the rest are queued for a dedicated fix pass, not started yet.
 
 ## How it works (plain English)
 
@@ -117,9 +117,27 @@ Why this beats $30/$50: Starter at $25 restores a real price wedge under Gold Fe
 
 **Free tier: recommend NO permanent free plan at launch.** Reasoning: (a) target buyers (bullion/by-weight) treat repricing as must-have infrastructure — a 14-day trial is enough to prove it, they don't need free-forever to be convinced; (b) a free plan attracts exactly the skeptical fashion-jewelry segment from validation — support load without revenue, and support time is the app's real cost; (c) every all-free competitor in the niche is an abandoned side project (competition analysis); (d) dev/partner stores get apps free automatically anyway. The one genuine upside forgone: a free plan earns the "Free plan available" badge in App Store search results, which helps discovery — revisit if install volume is weak after launch. Private plans (15 allowed) cover the Chris case: give design partners a free-for-life private plan without a public free tier.
 
-## Full code audit performed (2026-07-18) — report only, fixes pending
+## Full code audit performed (2026-07-18) — report only, most fixes still pending
 
-Complete findings in [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md). Headlines: 4 HIGH (rate-cache loop that can burn the entire API quota invisibly; scheduler likely fails on expired offline tokens when app sits idle — token confirmed expired in DB during audit; preview/apply rate drift means merchant can approve X and get Y; hardcoded SQLite path = guaranteed data loss on container hosting without a volume), 7 MEDIUM, 8 LOW. Nothing fixed yet per user instruction — fix order should be H1→H4 before any production deploy, H3 before Chris demo.
+Complete findings in [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md). 4 HIGH, 7 MEDIUM, 8 LOW. **H4 (hardcoded SQLite path) is now fixed** — forced by actually deploying, see below. **H1, H2, H3, and every MEDIUM/LOW are still open, deliberately untouched**, per explicit instruction: audit is report-only until a dedicated fix pass in a later turn. Do not fix these opportunistically while doing other work — wait for that turn. Priority when it happens: H3 (preview/apply price drift — directly undermines the "approve before it changes" pitch) and H2 (scheduler + expired offline tokens, unverified whether background refresh works) before H1, since H1's damage is capped (API quota) while H2/H3 are correctness/trust issues.
+
+## Deployed to Railway — live (2026-07-18)
+
+Went from "runs on a dev tunnel" to a real persistent URL in one session. Full chain, in the order each thing was actually hit:
+
+1. **Chose Postgres over SQLite+volume** (user decision) to fix H4 properly rather than patch around it — matches "we want our app the best."
+2. **Provisioned on Railway**: project `metalrate-sync`, managed Postgres add-on, `metalrate-sync-app` service, public domain generated (`metalrate-sync-app-production.up.railway.app`).
+3. **Switched `schema.prisma`** to `postgresql` + `env("DATABASE_URL")`, deleted all SQLite-era migrations (incompatible SQL dialect), generated one fresh baseline migration applied directly against the real Railway Postgres. Local `.env` (gitignored) points at the same instance for now — dev and "prod" share one database pre-launch, worth splitting before real customers.
+4. **First deploy failed** — Dockerfile ran `npm ci --omit=dev` before `npm run build`, but the build needs `vite`/`typescript` from devDependencies. Fixed: install everything, build, then `npm prune --omit=dev` to keep the final image lean.
+5. **Second deploy failed** — the template's own `.gitignore` excludes `package-lock.json`, so `railway up`'s upload (which respects `.gitignore`) never included it, and `npm ci` hard-requires an existing lockfile. Committed the lockfile — correct move regardless of hosting, not a workaround.
+6. **Third deploy succeeded** (build + Postgres migration both clean), but the container crashed on boot: `SHOPIFY_API_SECRET` wasn't set. Expected — that's the one variable that has to be the user's own action, never something I touch.
+7. **`shopify app deploy` shipped a live app version still pointing at `application_url = "https://example.com"`** — the placeholder was never updated for production. Fixed `shopify.app.toml`'s `application_url` and `auth.redirect_urls` to the real Railway domain (`/auth/callback`, matching `authPathPrefix: "/auth"` in `shopify.server.ts`), redeployed the config.
+8. **Key/secret mixup**: user pasted what looked like the secret into the `SHOPIFY_API_KEY` field (overwriting the correct public client ID) instead of creating a new `SHOPIFY_API_SECRET` variable. Caught it from the value's shape (`shpss_...` prefix, not a bare client-ID-looking string), walked through the fix without ever displaying the actual secret value.
+9. **Confirmed live**: `curl` returned HTTP 200 with real rendered HTML from the Railway domain. App installed and exercised successfully on the real dev store against the deployed URL, not localhost.
+
+**Known gotcha going forward**: `automatically_update_urls_on_dev = true` in `shopify.app.toml` means `application_url` silently flips back to whatever local dev tunnel is active every time `npm run dev` runs. Check this file before any future `shopify app deploy` if there's been a local dev session in between — this is exactly how step 7 above happened.
+
+**Cost note**: Railway's "free tier" is a one-time trial credit, not an ongoing free plan — expect ~$5/mo (Hobby) once that's used up. Postgres add-on cost is included in that, not separate.
 
 ## Is this ready to show Chris? (honest answer)
 
@@ -137,12 +155,15 @@ Complete findings in [research/code-audit-2026-07-18.md](research/code-audit-202
 - **Scheduled auto-sync is real, not config-only anymore.** [scheduler.server.ts](metalrate-sync/app/services/scheduler.server.ts) ticks every minute and runs a shop's sync once its interval has elapsed, using Shopify's official `unauthenticated.admin()` background-job pattern. Verified the due/not-due timing logic with 5 boundary-condition tests. Caveat, and it's a real one: this needs a persistent host to keep ticking — it does nothing useful on serverless hosting or once a dev laptop goes to sleep.
 - Proper documentation exists now: [metalrate-sync/README.md](metalrate-sync/README.md) (developer) and [metalrate-sync/docs/user-guide.md](metalrate-sync/docs/user-guide.md) (merchant-facing — this is what to point Chris at).
 
+**Solid, added 2026-07-18 (deploy):**
+- **Real persistent hosting.** No longer a dev tunnel that dies when a laptop sleeps — `https://metalrate-sync-app-production.up.railway.app`, managed Postgres, confirmed working against a real dev store install. This was the last non-negotiable before Chris could actually use it rather than just watch a screen-share.
+
 **Not solid — do not oversell these:**
-- Nobody has clicked through bulk import in an actual browser yet. Logic is proven, the human-facing flow isn't.
-- Running on a local dev tunnel, not real hosting — the URL dies the moment `npm run dev` stops, and the scheduler needs a persistent host to mean anything. Can't hand Chris a persistent link yet.
+- Bulk import has been clicked through in the live browser now (confirmed working on the dev store), but not yet stress-tested with a large real CSV.
 - No billing — fine for a private design-partner test, not fine for anyone else.
 - Free-tier API quota is fragile under real testing volume (see above) — bump the cache TTL in Settings before heavy testing.
 - Test data is still the joke Snowboard — that's a 2-minute manual fix inside the Shopify admin, genuinely needs a human's hands (see TODO).
+- **H3 from the audit is real and unfixed**: the price a merchant approves in Preview isn't the exact price guaranteed to apply if the rate moves between preview and clicking Apply. Low practical risk in a quick demo, but don't claim the "approve before it changes" pitch is airtight until this is fixed.
 
 ## Codebase map (metalrate-sync/)
 
@@ -216,21 +237,29 @@ Split by who actually has to act — most of the code/research-only backlog got 
 
 **Needs the user specifically:**
 
-1. [ ] Click through bulk import once in the live browser UI (create a formula, upload a small real CSV, confirm the results table looks right). The logic is proven by mocked tests, the human-facing flow isn't.
-2. [ ] Replace the joke Snowboard test data with 2-3 real gold/silver products (weight, SKU) directly in the Shopify admin — needs your login, not something to script blind against real store data.
-3. [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency) — show him the live proof-of-concept once (1) and (2) are done. Outreach list + messages for other prospects: [research/outreach-list-and-messages.md](research/outreach-list-and-messages.md).
-4. [ ] Pick a hosting provider (Fly.io / Railway / Render) and create an account there — needs your credentials/payment method, not something done on your behalf. Deploy once decided.
-5. [ ] Billing setup via Shopify App Pricing — configured through the Dev Dashboard UI, needs your login.
-6. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key — needs a purchase decision.
-7. [ ] Buy a domain before App Store submission (not needed to keep building — cheap insurance for a support email + privacy policy page that doesn't look like the sketchier competitors' placeholder sites).
+1. [ ] Replace the joke Snowboard test data with 2-3 real gold/silver products (weight, SKU) directly in the Shopify admin — needs your login, not something to script blind against real store data.
+2. [ ] Lock Chris in as committed design partner (reply sent, awaiting his answers on SKU count/import frequency) — show him the live proof, now on a real URL. Outreach list + messages for other prospects: [research/outreach-list-and-messages.md](research/outreach-list-and-messages.md).
+3. [ ] Billing setup via Shopify App Pricing — configured through the Dev Dashboard UI, needs your login. Pricing decided: $25/$45, see below.
+4. [ ] Bundle a paid rate-provider key for customers instead of BYO free-tier key — needs a purchase decision.
+5. [ ] Buy a domain before App Store submission (not needed to keep building — cheap insurance for a support email + privacy policy page that doesn't look like the sketchier competitors' placeholder sites).
+6. [ ] Rotate the MetalPriceAPI key and the Shopify client secret — both were exposed in chat/screenshots during setup this week. Not urgent, good hygiene once things are stable.
+
+**Next dedicated turn — code audit fixes (not started, explicitly deferred):**
+
+7. [ ] Work through [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md): H1 (rate-cache quota burn), H2 (scheduler + expired offline tokens, unverified refresh behavior), H3 (preview/apply price drift), then the 7 MEDIUM and 8 LOW items. Suggested order in the audit doc's own note: H3 and H2 before H1.
 
 **Still open, buildable without the user (not yet started):**
 
 8. [ ] Storefront rate ticker / price breakup theme extension (post-MVP, deliberately deferred this session — it's a genuinely separate component, lower priority than everything above per the original ranking).
 9. [ ] eBay/marketplace sync, POS sync, Built for Shopify badge chase (later roadmap, see competition-analysis.md).
 10. [ ] True 10k+ scale live-validated against a real seeded catalog (the Bulk Operations code path is built and passes mocked tests, but hasn't been run against an actual 10k-variant store yet — needs either Chris's real catalog or a dedicated seeding run, both of which are bigger asks than this session's scope).
+11. [ ] Split local dev database from the Railway production Postgres — currently sharing one instance, fine pre-launch, not once there are real merchants.
 
-**Done (2026-07-15/16):**
+**Done (2026-07-15/16/18):**
+- [x] ~~Deploy to persistent hosting~~ → Railway, live, Postgres, confirmed working on the real dev store — see "Deployed to Railway" above
+- [x] ~~Fix H4 (hardcoded SQLite path)~~ → switched to Postgres as part of deploying
+- [x] ~~Click through bulk import in the live browser~~ → confirmed working on the real deployed app
+- [x] ~~Finalize pricing~~ → $25/mo Starter, $45/mo Growth, 14-day trial, no permanent free tier
 - [x] ~~Create Partner account + dev store~~ (partner account done by user; dev store created; app installed)
 - [x] ~~Decide app name~~ → MetalRate Sync
 - [x] ~~Prove the core loop works end to end~~ → confirmed 2026-07-15 on the real dev store
@@ -268,3 +297,5 @@ Split by who actually has to act — most of the code/research-only backlog got 
   6. Updated this file throughout.
 
   Everything above: typecheck clean, production build clean, checked at every step, not just at the end. What's left in the TODO now is almost entirely things that need the user directly (a login, a purchase, a conversation, or eyes on a live screen) — see the reorganized TODO list above.
+- **2026-07-18 (later)**: Full code audit performed — [research/code-audit-2026-07-18.md](research/code-audit-2026-07-18.md), 4 HIGH / 7 MEDIUM / 8 LOW, report-only per instruction. Pricing landed at **$25/mo Starter, $45/mo Growth**, 14-day trial, no permanent free tier — see "Pricing" section above for the full reasoning and the two earlier revisions that led here.
+- **2026-07-18 (deploy)**: **Shipped to persistent hosting.** Chose Postgres over SQLite+volume for H4 (user: "we want our app the best"). Provisioned Railway project + managed Postgres + app service. Fresh Postgres migration generated and applied against the real instance. Hit and fixed three real deploy blockers in sequence: Dockerfile stripping devDependencies before a build step that needs them, `package-lock.json` excluded by the template's own `.gitignore` while the Dockerfile's `npm ci` requires it, and `shopify.app.toml` shipping a live app version still pointed at the placeholder `example.com` instead of the real domain. Caught and corrected a `SHOPIFY_API_KEY`/`SHOPIFY_API_SECRET` mixup from the value's shape without ever displaying the actual secret. Confirmed live with an actual HTTP 200 from the Railway domain, then confirmed again by installing and exercising the app on the real dev store against that URL. Full story: "Deployed to Railway" section above.
