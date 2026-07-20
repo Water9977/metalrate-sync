@@ -145,7 +145,7 @@ a {
 
 .hero {
   position: relative;
-  padding: 168px 0 72px;
+  padding: 130px 0 72px;
   overflow: hidden;
 }
 
@@ -166,12 +166,11 @@ a {
   pointer-events: none;
 }
 
-.hero-grid {
+.hero-copy {
   position: relative;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  gap: 56px;
-  align-items: center;
+  max-width: 780px;
+  margin: 52px auto 0;
+  text-align: center;
 }
 
 .eyebrow {
@@ -200,8 +199,8 @@ a {
 .hero-sub {
   font-size: 18px;
   color: var(--muted);
-  max-width: 46ch;
-  margin-bottom: 32px;
+  max-width: 56ch;
+  margin: 0 auto 32px;
 }
 
 .hero-sub strong {
@@ -214,6 +213,7 @@ a {
   gap: 14px;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
 }
 
 .btn-primary {
@@ -259,11 +259,9 @@ a {
 }
 
 .hero-visual img {
-  width: auto;
-  max-width: 100%;
-  max-height: min(560px, 62vh);
+  width: 100%;
+  max-width: 1040px;
   height: auto;
-  object-fit: contain;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   box-shadow:
@@ -273,11 +271,10 @@ a {
 
 @media (max-width: 900px) {
   .hero {
-    padding-top: 130px;
+    padding-top: 110px;
   }
-  .hero-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
+  .hero-copy {
+    margin-top: 36px;
   }
 }
 
@@ -550,22 +547,16 @@ a {
 
 .shots {
   display: grid;
-  gap: 48px;
+  gap: 72px;
 }
 
 .shot {
   display: grid;
-  grid-template-columns: 0.9fr 1.6fr;
-  gap: 40px;
-  align-items: center;
+  gap: 22px;
 }
 
-.shot:nth-child(even) {
-  grid-template-columns: 1.6fr 0.9fr;
-}
-
-.shot:nth-child(even) .shot-copy {
-  order: 2;
+.shot-copy {
+  max-width: 720px;
 }
 
 .shot-copy .kicker {
@@ -575,14 +566,14 @@ a {
   text-transform: uppercase;
   color: var(--gold);
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .shot-copy h3 {
   font-family: var(--font-display-stack);
   font-weight: 400;
   font-size: 26px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .shot-copy p {
@@ -598,15 +589,9 @@ a {
   box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.7);
 }
 
-@media (max-width: 860px) {
-  .shot,
-  .shot:nth-child(even) {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  .shot:nth-child(even) .shot-copy {
-    order: 0;
-  }
+.shot-img img {
+  width: 100%;
+  height: auto;
 }
 
 /* ---------- pricing ---------- */

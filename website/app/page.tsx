@@ -187,15 +187,23 @@ export default function Home() {
 
       <main>
         <header className="hero">
-          <div className="wrap hero-grid">
-            <div>
+          <div className="wrap">
+            <div className="hero-visual">
+              <Image
+                src="/images/hero-feature.png"
+                alt="Gold, silver, platinum and palladium on dark pedestals with price direction markers"
+                width={1600}
+                height={900}
+                sizes="(max-width: 1200px) 100vw, 1040px"
+                priority
+              />
+            </div>
+            <div className="hero-copy">
               <p className="eyebrow">
                 Shopify app · bullion &amp; by-weight jewelry
               </p>
               <h1>
-                Spot moves.
-                <br />
-                Your store <em>follows.</em>
+                Spot moves. Your store <em>follows.</em>
               </h1>
               <p className="hero-sub">
                 MetalRate Sync reprices your whole Shopify catalog from live
@@ -213,15 +221,6 @@ export default function Home() {
               <p className="hero-note">
                 14-day free trial at launch · no rate-feed subscription needed
               </p>
-            </div>
-            <div className="hero-visual">
-              <Image
-                src="/images/hero-feature.png"
-                alt="Gold, silver, platinum and palladium on dark pedestals with price direction markers"
-                width={1600}
-                height={900}
-                priority
-              />
             </div>
           </div>
           <Ticker />
@@ -324,13 +323,19 @@ export default function Home() {
             <div className="shots">
               {SHOTS.map((s) => (
                 <div className="shot" key={s.kicker}>
+                  <div className="shot-img">
+                    <Image
+                      src={s.src}
+                      alt={s.alt}
+                      width={1913}
+                      height={911}
+                      sizes="(max-width: 1200px) 100vw, 1120px"
+                    />
+                  </div>
                   <div className="shot-copy">
                     <span className="kicker">{s.kicker}</span>
                     <h3>{s.title}</h3>
                     <p>{s.body}</p>
-                  </div>
-                  <div className="shot-img">
-                    <Image src={s.src} alt={s.alt} width={1913} height={911} />
                   </div>
                 </div>
               ))}
