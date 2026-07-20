@@ -260,7 +260,7 @@ a {
 
 .hero-visual img {
   width: 100%;
-  max-width: 1040px;
+  max-width: 900px;
   height: auto;
   border-radius: var(--radius);
   border: 1px solid var(--line);
@@ -582,6 +582,8 @@ a {
 }
 
 .shot-img {
+  max-width: 88%;
+  margin: 0 auto;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   overflow: hidden;
