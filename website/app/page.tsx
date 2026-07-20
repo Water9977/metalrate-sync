@@ -192,7 +192,7 @@ export default function Home() {
               <Image
                 src="/images/hero-feature.png"
                 alt="Gold, silver, platinum and palladium on dark pedestals with price direction markers"
-                width={1600}
+                width={1586}
                 height={900}
                 sizes="(max-width: 1200px) 100vw, 1040px"
                 priority
