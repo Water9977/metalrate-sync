@@ -366,7 +366,7 @@ export default function Home() {
                 </p>
                 <p className="plan-trial">14-day free trial</p>
                 <ul>
-                  <li>Up to 500 SKUs</li>
+                  <li>Up to 800 SKUs</li>
                   <li>Automatic sync twice a day</li>
                   <li>All formula features, incl. stop-loss</li>
                   <li>Bulk CSV import &amp; export</li>
