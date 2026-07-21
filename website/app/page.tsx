@@ -386,7 +386,6 @@ export default function Home() {
                   <li>Unlimited SKUs</li>
                   <li>Automatic sync up to 5× a day</li>
                   <li>Everything in Starter</li>
-                  <li>India city rates (gold &amp; silver)</li>
                   <li>Priority support</li>
                 </ul>
                 <a className="btn-primary" href="#get">

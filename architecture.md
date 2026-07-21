@@ -110,8 +110,8 @@ Three revisions across two days: $14.99/$29.99 (proposal) → $30/$50 (user's "s
 | Plan | Price | Limits |
 |---|---|---|
 | Free trial | **14 days** | full features (Shopify's docs explicitly recommend 14 days) |
-| **Starter** | **$30/mo** | up to 800 SKUs, auto-sync **twice a day**, all formula features, CSV import |
-| **Pro** | **$50/mo** | unlimited SKUs, auto-sync **up to 5x/day**, priority support, India city rates, future: eBay/POS |
+| **Starter** | **$30/mo** | up to 800 SKUs, auto-sync **twice a day**, all formula features (incl. India city rates), CSV import |
+| **Pro** | **$50/mo** | unlimited SKUs, auto-sync **up to 5x/day**, priority support, future: eBay/POS |
 
 Sanity-checked against the competitive set ([competition-analysis.md](competition-analysis.md)): this lands almost exactly on **Metal Updater's** $34.99/$49.99 (5 formulas/250 SKU → unlimited/unlimited + priority support) — the closest real analog in the whole niche, and one of only two apps with sub-10 review counts that's still 5.0★. $30 Starter still beats Gold Feed's $40 (the Chris-switch pitch) while sitting comfortably above the race-to-the-bottom $9.99 tier.
 
