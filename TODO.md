@@ -100,7 +100,7 @@ All 18 findings resolved 2026-07-18/19 (commit `c9f497e`) — see architecture.m
 Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff changes). Full detail in architecture.md "App Store submission checklist" — below is the flat version to work through, in order.
 
 **1. Distribution (do first, irreversible):**
-- [ ] Dev Dashboard → `metalrate-sync` → Distribution → **Public distribution**. Confirms this app is the one and only App Store submission — no second app needed anymore.
+- [x] Partner Dashboard → `metalrate-sync` → Distribution → **Public distribution** — **done 2026-07-20**. Also registered the Partner account for App Store access ($19 one-time fee, Individual, no other associated accounts). This app is now locked onto the Public/App Store track — no second app needed.
 
 **2. Configuration:**
 - [x] App icon — 1200×1200px set in the Dev Dashboard (done 2026-07-19).
