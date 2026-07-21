@@ -8,7 +8,7 @@ Truth source document for this project. Anyone (human or AI) reading this file s
 
 **MetalRate Sync** — a Shopify app that automatically updates product prices based on live gold, silver, platinum and palladium rates, so jewelry and bullion sellers never have to manually reprice their catalog when the market moves. Core wedge: bulk update reliability at 10k+ SKU scale plus preview-before-commit.
 
-App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sync; doesn't lock us out of jewelry segment the way "Bullion" branding would).
+App name: **MetalRate Sync** (chosen for ASO keyword coverage: metal + rate + sync; doesn't lock us out of jewelry segment the way "Bullion" branding would). Domain, logo, and everyday product name throughout this doc. **Formal Shopify App Store listing/TOML name is "Ounce: MetalRate Sync"** as of 2026-07-20 — Shopify's own naming rule requires a distinctive brand word in front of a purely functional name; see the 2026-07-20 changelog entry for the full reasoning.
 
 ## Current status
 
