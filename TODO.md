@@ -112,14 +112,15 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 **4. Listing content:**
 - [x] Confirm "MetalRate Sync" doesn't collide with an existing app name — **verified clear via web search 2026-07-19**: no app by that name; closest are "Metal Updater" and two unrelated "GoldSync" apps. Note: MetalpriceAPI (the rate vendor) ships its own competing Shopify app — no naming conflict, just competitive awareness.
-- [ ] 3+ screenshots, 1600×900, each a genuinely different feature/view, no desktop chrome, no near-duplicates (actively enforced since March 2026).
-- [ ] Feature image (1600×900) or a 2-3 min *promotional* video — not the same as the Chris walkthrough Looms, which are instructional. A separate short promo cut is needed for the actual listing.
+- [x] **App renamed to "Ounce: MetalRate Sync" — 2026-07-20**, per Shopify's own AI listing-review flag: app names can't be a pure functional descriptor, must lead with a distinctive brand word ("QTeck - Announcement Bar" not "Announcement Bar - QTeck"). "MetalRate Sync" alone is just metal+rate+sync — no brand. Picked "Ounce" (troy-ounce reference, checked clear on the App Store via web search). Only the formal listing/TOML name changed — domain (metalratesync.com), logo, and marketing-site copy all stay "MetalRate Sync" as the product's common name. `shopify.app.toml`'s `name` field updated and deployed live (`shopify app deploy`, version `ounce-metalrate-sync-4`).
+- [x] 5 screenshots, exact 1600×900 — cropped from real captures (right-side empty admin whitespace trimmed, nothing meaningful lost): `asset/listing-screenshots/shot-{dashboard,formulas,import,history,settings}.png`.
+- [x] Feature media — **fixed 2026-07-20** after Shopify's own AI listing review flagged the original pedestal illustration as "not informative... only includes a logo, icon, or illustration." Swapped to `asset/listing-screenshots/shot-dashboard.png` (real UI, live rates + last sync). The pedestal render stays on the marketing site hero instead, where illustration is fine.
 - [ ] Demo store URL — a clean dev store showing the app live (fixing the Snowboard test data does double duty here).
-- [ ] Support email address (required) — recommend a domain-backed address once the domain's bought.
-- [ ] Privacy policy URL — needs real hosting; this is the one place the domain purchase matters for submission itself, not just marketing.
+- [x] Support email address → `metalratesync@gmail.com` (decided 2026-07-19, same address used everywhere).
+- [x] Privacy policy URL → `https://metalratesync.com/privacy`, live.
 - [ ] Pricing entered only in the designated Pricing Details section of the form.
-- [ ] Sales-channel/geography install-eligibility flags set.
-- [ ] Protected customer data — opt out (app needs no PII/customer scopes).
+- [x] Sales-channel requirements → "My app doesn't require the Shopify Online Store or Shopify POS."
+- [x] Protected customer data → opted out via "My app won't use customer data" + Request.
 
 **5. Review prep:**
 - [ ] Full setup screencast for the reviewer (broader than the Chris Looms — cover everything, not just highlights).
