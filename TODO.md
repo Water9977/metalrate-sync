@@ -124,7 +124,7 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 **5. Review prep:**
 - [ ] Full setup screencast for the reviewer (broader than the Chris Looms — cover everything, not just highlights).
 - [ ] Decide review path for the live-rate feature: either hand over working MetalPriceAPI test credentials, or make sure the built-in **mock** provider mode is enough for the reviewer to verify functionality (safer — no real key handed to Shopify).
-- [ ] Run the Dev Dashboard's automated pre-submission checks, clear every flag.
+- [x] Run the Dev Dashboard's automated pre-submission checks, clear every flag — **AI self-review done 2026-07-20**: [research/app-store-self-review-2026-07-20.md](research/app-store-self-review-2026-07-20.md). 28 passing, 0 failing, only the 3 billing items flagged as "in progress" (correctly — plans aren't created yet). Still need to click **Run** on the live "Automated checks for common errors" in the Partner Dashboard itself (a separate, Shopify-side check I can't trigger remotely) once the primary listing language is chosen.
 - [ ] Zero web errors (404/500) and zero UI bugs anywhere reachable during review.
 
 **6. Submit for review.**
