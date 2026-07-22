@@ -147,7 +147,7 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 **6. Submit for review.**
 
-**7. Once approved:** Chris (and anyone else) installs via the normal App Store trial. Give Chris a private free plan right after (Dev Dashboard → Pricing) — done, no further steps.
+**7. Once approved:** Chris (and anyone else) installs via the normal App Store trial. **Decided 2026-07-22: no private/free plan for Chris** — he hasn't replied to outreach, so there's no active relationship to justify special-casing him. He gets the same 14-day trial as any other merchant if/when he installs. Revisit a private plan only if he actually re-engages.
 
 **Domain / SEO:**
 - [x] Domain chosen: **metalratesync.com** (purchased 2026-07-19).
@@ -164,4 +164,6 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 ## Chris — no separate plan needed anymore
 
-Superseded 2026-07-19: no more second app, no second Railway service, no Custom distribution. Chris installs the one real app once it's Public and live, same flow as any merchant, then gets a private free plan. See "Path to launch" above — his access is just step 7 of that single list.
+Superseded 2026-07-19: no more second app, no second Railway service, no Custom distribution. Chris installs the one real app once it's Public and live, same flow as any merchant.
+
+**Updated 2026-07-22**: also no private/free plan anymore — he never replied to the outreach emails, so there's no design-partner relationship active right now to build special-case infrastructure for. Normal 14-day trial like every other merchant if he ever installs. See "Path to launch" step 7 above.
