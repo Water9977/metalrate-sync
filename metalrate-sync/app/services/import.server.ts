@@ -1,6 +1,7 @@
 import prisma from "../db.server";
 import { fetchCatalogBySku, type CatalogVariant } from "./catalog.server";
 import { parseImportCsv } from "./csv.server";
+import { PLAN_LIMITS, type PlanTier } from "./billing.server";
 
 export interface ImportSummary {
   matched: number;
@@ -8,6 +9,11 @@ export interface ImportSummary {
   notFound: string[];
   invalidFormula: Array<{ sku: string; formulaName: string }>;
   truncated: boolean;
+  // SKUs that had a valid weight+formula (would normally turn ON) but were
+  // kept disabled because the plan's SKU cap was already full by the time
+  // the row was processed. Distinct from notFound/invalidFormula -- these
+  // rows matched fine, they just didn't fit under the cap.
+  planCapped: string[];
 }
 
 export interface ImportResult {
@@ -34,6 +40,7 @@ export async function runImport(
   shop: string,
   admin: AdminClient,
   csvText: string,
+  planTier: PlanTier,
 ): Promise<ImportResult> {
   const { rows, error } = parseImportCsv(csvText);
   if (error) {
@@ -65,6 +72,7 @@ export async function runImport(
     notFound: [],
     invalidFormula: [],
     truncated,
+    planCapped: [],
   };
 
   const matchedVariantIds = dedupedRows
@@ -77,6 +85,18 @@ export async function runImport(
     existingConfigs.map((config) => [config.variantId, config]),
   );
 
+  // SKU-cap enforcement, mirroring the single-save check in
+  // app.products.tsx: a variant already enabled being re-imported (e.g. its
+  // weight changed) doesn't consume a new slot, only a row that flips
+  // disabled -> enabled does. Track a running count seeded from the shop's
+  // current enabled total so rows are capped correctly as they're processed
+  // in sequence, not just against the pre-import snapshot.
+  const cap = PLAN_LIMITS[planTier].skuCap;
+  let enabledCount =
+    cap == null
+      ? 0
+      : await prisma.variantConfig.count({ where: { shop, enabled: true } });
+
   for (const row of dedupedRows) {
     const variant: CatalogVariant | undefined = bySku.get(row.sku);
     if (!variant) {
@@ -85,8 +105,8 @@ export async function runImport(
     }
     summary.matched += 1;
 
-    let formulaId: number | null =
-      existingByVariantId.get(variant.variantId)?.formulaId ?? null;
+    const existing = existingByVariantId.get(variant.variantId);
+    let formulaId: number | null = existing?.formulaId ?? null;
     if (row.formulaName) {
       const match = formulaByName.get(row.formulaName.toLowerCase());
       if (match) {
@@ -97,7 +117,18 @@ export async function runImport(
     }
 
     const weightGrams =
-      row.weightGrams ?? existingByVariantId.get(variant.variantId)?.weightGrams ?? 0;
+      row.weightGrams ?? existing?.weightGrams ?? 0;
+
+    let enabled = weightGrams > 0 && formulaId != null;
+    const wasEnabled = existing?.enabled ?? false;
+    if (enabled && !wasEnabled && cap != null) {
+      if (enabledCount >= cap) {
+        enabled = false;
+        summary.planCapped.push(row.sku);
+      } else {
+        enabledCount += 1;
+      }
+    }
 
     await prisma.variantConfig.upsert({
       where: { shop_variantId: { shop, variantId: variant.variantId } },
@@ -108,7 +139,7 @@ export async function runImport(
         productTitle: variant.productTitle,
         variantTitle: variant.variantTitle,
         sku: variant.sku,
-        enabled: weightGrams > 0 && formulaId != null,
+        enabled,
       },
       create: {
         shop,
@@ -119,15 +150,19 @@ export async function runImport(
         sku: variant.sku,
         weightGrams,
         formulaId,
-        enabled: weightGrams > 0 && formulaId != null,
+        enabled,
       },
     });
     summary.updated += 1;
   }
 
+  const cappedNote =
+    summary.planCapped.length > 0
+      ? ` ${summary.planCapped.length} matched but weren't turned on — your plan's ${cap}-SKU limit is full.`
+      : "";
   return {
     ok: true,
-    message: `Imported ${summary.updated} of ${rows.length} rows.`,
+    message: `Imported ${summary.updated} of ${rows.length} rows.${cappedNote}`,
     summary,
   };
 }

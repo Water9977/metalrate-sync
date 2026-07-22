@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { requireActivePlan, PLAN_LIMITS } from "../services/billing.server";
 import { WEIGHT_UNITS, gramsPerUnit } from "../constants";
 
 const PRODUCTS_QUERY = `#graphql
@@ -88,8 +89,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
+
+  // Defense in depth: see app.formulas.tsx for why actions can't just
+  // trust the app.tsx layout loader already gated this.
+  const plan = await requireActivePlan(admin);
+  if (!plan.ok) return plan;
+
   const form = await request.formData();
   const intent = String(form.get("intent"));
 
@@ -112,6 +119,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         where: { id: formulaId, shop },
       });
       if (!owned) return { ok: false, message: "Formula not found" };
+    }
+
+    // SKU-cap enforcement: only matters when this save is turning a
+    // variant ON (a variant already enabled being edited -- e.g. just its
+    // weight changing -- doesn't consume a new slot).
+    const willBeEnabled = weightGrams > 0 && formulaId != null;
+    const cap = PLAN_LIMITS[plan.tier].skuCap;
+    if (willBeEnabled && cap != null) {
+      const existing = await prisma.variantConfig.findUnique({
+        where: { shop_variantId: { shop, variantId } },
+      });
+      if (!existing?.enabled) {
+        const enabledCount = await prisma.variantConfig.count({
+          where: { shop, enabled: true },
+        });
+        if (enabledCount >= cap) {
+          return {
+            ok: false,
+            message: `You've reached the ${cap}-SKU limit on your plan. Upgrade to Pro for unlimited SKUs, or stop tracking another variant first.`,
+          };
+        }
+      }
     }
 
     await prisma.variantConfig.upsert({

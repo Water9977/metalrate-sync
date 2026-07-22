@@ -10,6 +10,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { Prisma } from "@prisma/client";
+import { requireActivePlan } from "../services/billing.server";
 import {
   METAL_LABELS,
   METAL_TONE,
@@ -28,8 +29,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
+
+  // Defense in depth: the app.tsx layout loader already gates page access,
+  // but a fetcher.submit on an already-mounted page doesn't re-run that
+  // loader -- a canceled subscription in another tab must still block the
+  // actual mutation, not just the page load.
+  const plan = await requireActivePlan(admin);
+  if (!plan.ok) return plan;
+
   const form = await request.formData();
   const intent = String(form.get("intent"));
 

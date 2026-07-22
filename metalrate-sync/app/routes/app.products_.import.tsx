@@ -10,6 +10,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { runImport, type ImportSummary } from "../services/import.server";
+import { requireActivePlan } from "../services/billing.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -22,6 +23,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
+
+  // Defense in depth: see app.formulas.tsx for why actions can't just
+  // trust the app.tsx layout loader already gated this. Bulk import is
+  // also the SKU-cap enforcement's biggest surface (hundreds of rows in
+  // one request), so this doubles as the entry point runImport needs the
+  // plan for.
+  const plan = await requireActivePlan(admin);
+  if (!plan.ok) return { ok: false, message: plan.message, summary: null };
 
   const form = await request.formData();
   const file = form.get("file");
@@ -40,7 +49,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const text = await file.text();
-  return runImport(shop, admin, text);
+  return runImport(shop, admin, text, plan.tier);
 };
 
 export default function BulkImport() {
@@ -170,7 +179,24 @@ export default function BulkImport() {
                   {summary.invalidFormula.length} unknown formula name
                 </s-badge>
               )}
+              {summary.planCapped.length > 0 && (
+                <s-badge tone="critical">
+                  {summary.planCapped.length} blocked by plan limit
+                </s-badge>
+              )}
             </s-stack>
+
+            {summary.planCapped.length > 0 && (
+              <s-banner tone="warning" heading="SKU limit reached">
+                {summary.planCapped.length} row
+                {summary.planCapped.length === 1 ? "" : "s"} matched fine but
+                weren't turned on because your plan's SKU limit is full:{" "}
+                {summary.planCapped.join(", ")}. Upgrade to Pro for unlimited
+                SKUs, or free up slots in{" "}
+                <s-link href="/app/products">Products</s-link> first, then
+                re-import.
+              </s-banner>
+            )}
 
             {summary.truncated && (
               <s-banner tone="warning" heading="Catalog partially scanned">

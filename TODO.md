@@ -2,7 +2,7 @@
 
 Single source of truth for what's left. Cross-linked with [architecture.md](architecture.md) (full narrative/decisions) — this file is the flat checklist to work off of. Slash items as they're done, don't delete them (keep the record).
 
-Last updated: 2026-07-19 (night — collapsed to a single launch path, no more separate Chris fast-track).
+Last updated: 2026-07-22 (billing + plan-limit enforcement shipped in code).
 
 ---
 
@@ -60,9 +60,26 @@ All 18 findings resolved 2026-07-18/19 (commit `c9f497e`) — see architecture.m
 
 ---
 
+## ✅ Billing, plan enforcement & rate limiting — CODE DONE (2026-07-22)
+
+Full build per explicit instruction ("no loophole and bugs which lets end user misuse anything at all"). Full narrative in architecture.md "Billing, plan enforcement & rate limiting". Flat summary:
+
+- [x] Plan detection off Admin GraphQL (`currentAppInstallation.activeSubscriptions`) — no Partner API, no new credentials. [billing.server.ts](metalrate-sync/app/services/billing.server.ts).
+- [x] Loader-side gate on `app.tsx` — no active plan redirects to Shopify's hosted plan-selection page (iframe-safe).
+- [x] Action-side gate (defense in depth) on every mutating route: formulas, settings, products, sync, bulk import. A `fetcher.submit` to an already-mounted page doesn't rerun the loader, so this is the real security boundary, not just the loader redirect.
+- [x] SKU cap enforced: 800 for Starter, unlimited for Pro. Both the single-variant save and bulk CSV import paths enforce it (import reports which SKUs matched but weren't turned on due to the cap).
+- [x] Auto-sync frequency is plan-derived, not merchant-settable: Starter 720min (2x/day), Pro 288min (5x/day). Scheduler re-derives the live interval every tick and immediately disables scheduling if a shop's subscription lapses (not just after the 5-failure circuit breaker — a lapsed sub isn't a transient error).
+- [x] Settings UI shows real plan tier, SKU usage, and an upgrade link.
+- [x] Verified end-to-end with a mocked-admin script against the real DB (isolated shop key, cleaned up after) — tier parsing, redirect targeting, action gate shapes, and the exact SKU-cap boundary (799 seeded + 3 new → exactly 1 enables, 2 correctly capped). All passed.
+- [x] Manual Preview & Sync deliberately left **unlimited** — confirmed decision, it's been cache-only since Q5 and can't drain the rate-provider quota, so a refresh-count cap would add friction with no real protection.
+
+**What's NOT done — Dashboard-only, can't be scripted:**
+- [ ] **Actually create the Starter ($30) and Pro ($50) plans in the Dev Dashboard.** Until this happens, every shop (including dev stores testing normally) has no active subscription and gets redirected to the plan-selection page on every page load. See "Path to launch" step 3 below for the exact click path (unchanged from the 2026-07-19 research — still Dashboard UI only, no CLI/TOML field exists for this).
+- [ ] Click through the plan-selection flow once on the dev store after the plans exist, to confirm the redirect → pick a plan → return-to-app loop actually works live (the code path is verified with mocks, not yet watched running in a real browser against a real Shopify-hosted charge page).
+
 ## 🔒 Required builds before general launch (not bugs — missing features/gates)
 
-- [ ] **Billing via Shopify App Pricing.** Hard blocker — apps using off-platform billing can't be submitted to the App Store at all. **Confirmed 2026-07-19 (full page scrape of shopify.dev, not memory): this is Partner Dashboard UI only — no `shopify.app.toml` field, no CLI command, nothing code-side.** Pricing decided: $30/mo Starter (800 SKU, 2x/day sync) / $50/mo Pro (unlimited, 5x/day, priority support), 14-day trial, no permanent free tier. **For now everything is free everywhere (2026-07-19 decision) — billing comes with the App Store submission push.**
+- [x] ~~Billing via Shopify App Pricing~~ → **code-side done 2026-07-22**, see section above. Hard blocker was the missing enforcement code, not the Dashboard plan creation — that's the one remaining step, tracked above.
 
   **Exact click path (partners.shopify.com — the docs still say "Partner Dashboard" even though Dev Dashboard is primary elsewhere; if your login lands you on dev.shopify.com instead, the Distribution/Pricing screens are the same, just follow whatever the login redirects to):**
 
@@ -75,9 +92,9 @@ All 18 findings resolved 2026-07-18/19 (commit `c9f497e`) — see architecture.m
   7. **Chris's private plan comes later, after approval** — same Private plans section, up to 20 authorized store domains per plan. Doesn't skip App Store review (a Public-track app still can't be installed by an external store pre-approval, confirmed earlier) — it's the free-for-life plan he lands on once he installs post-launch, matching the "Path to launch" step 7 below.
 
   Sources: [shopify.dev/docs/apps/launch/billing/shopify-app-pricing](https://shopify.dev/docs/apps/launch/billing/shopify-app-pricing), [.../shopify-app-pricing/plans](https://shopify.dev/docs/apps/launch/billing/shopify-app-pricing/plans), [.../distribution/select-distribution-method](https://shopify.dev/docs/apps/launch/distribution/select-distribution-method).
-- [ ] **Plan-limit enforcement in code.** SKU-count cap + manual-Preview&Sync-frequency cap per plan. Provider-quota risk is dead (Q5) and schedule-interval abuse is dead (Q6, everyone gets the same server-fixed interval for now) — what's left is purely tier differentiation once real plans exist: right now every shop effectively gets the Pro-tier behavior for free. Build together with billing.
+- [x] ~~Plan-limit enforcement in code~~ → **done 2026-07-22**, see "Billing, plan enforcement & rate limiting" section above. SKU cap + sync-frequency are both live and plan-derived; manual Preview & Sync stays deliberately unlimited (cache-only, no quota risk).
 
-**"How is Preview & Sync frequency limited right now?" — direct answer:** manual Preview & Sync can still be *clicked* unlimited times by a merchant — that's unchanged. What changed is what clicking it costs: since Q5, repeated previews only ever hit the global rate cache (at most one live MetalPriceAPI call per TTL, system-wide, no matter how many merchants or clicks) — the vendor-quota risk this question originally worried about is gone. What's NOT rate-limited: each Preview/Apply still calls Shopify's own Admin API (catalog fetch, price mutations) — that's Shopify's rate limit to enforce, not ours, and the app already retries/backs off on throttling. A plan-based cap on manual-refresh *count* (2/day Starter, 5/day Pro, per the pricing design) is the one piece still not built — tracked above, needs billing first.
+**"How is Preview & Sync frequency limited right now?" — direct answer:** manual Preview & Sync can still be *clicked* unlimited times by a merchant, on both plans, deliberately — decided 2026-07-22 rather than adding a gated manual-refresh-count button. What changed is what clicking it costs: since Q5, repeated previews only ever hit the global rate cache (at most one live MetalPriceAPI call per TTL, system-wide, no matter how many merchants or clicks) — the vendor-quota risk this question originally worried about is gone, so there's no real protection a click-count cap would add, just friction. What's NOT rate-limited: each Preview/Apply still calls Shopify's own Admin API (catalog fetch, price mutations) — that's Shopify's rate limit to enforce, not ours, and the app already retries/backs off on throttling. What **is** now plan-gated (2026-07-22): the SKU cap (800 Starter / unlimited Pro) and the *automatic* scheduled-sync frequency (2x/day Starter, 5x/day Pro) — see the "Billing, plan enforcement & rate limiting" section above.
 - [x] ~~Single app-owned MetalPriceAPI key~~ — **shipped 2026-07-19**: `METALPRICEAPI_KEY` env var, BYO field removed, key columns dropped. **User action required: add the premium key as `METALPRICEAPI_KEY` on Railway's dashboard (Variables tab) and in the local `.env`** — until then the Live provider shows a clear "not configured" message and Manual/Demo still work. Only you can change the key, from Railway. L2 fully dead.
 - [ ] Split local dev database from the Railway production Postgres — currently sharing one instance, fine pre-launch, not once there are real paying merchants.
 
@@ -108,7 +125,7 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [ ] Double-check all app URLs avoid "Shopify"/"Example" (Railway domain already clean).
 - [x] Compliance webhooks (customers/data_request, customers/redact, shop/redact) — already built correctly.
 
-**3. Billing + plan limits** (already tracked above under "Required builds" — the hard blocker, do this before the listing content below is worth finishing).
+**3. Billing + plan limits** — **code side done 2026-07-22** (see section above). Remaining: create the actual Starter/Pro plans in the Dev Dashboard (exact click path is in the "Required builds" section above, unchanged from the 2026-07-19 research), then click through the flow once live before the listing content below is worth finishing.
 
 **4. Listing content:**
 - [x] Confirm "MetalRate Sync" doesn't collide with an existing app name — **verified clear via web search 2026-07-19**: no app by that name; closest are "Metal Updater" and two unrelated "GoldSync" apps. Note: MetalpriceAPI (the rate vendor) ships its own competing Shopify app — no naming conflict, just competitive awareness.

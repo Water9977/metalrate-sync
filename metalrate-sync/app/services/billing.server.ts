@@ -1,0 +1,157 @@
+/**
+ * Plan detection and enforcement for Shopify App Pricing.
+ *
+ * No Partner API, no separate credentials. Confirmed by reading the actual
+ * installed @shopify/shopify-api source (billing/check.js): the framework's
+ * own billing.check() queries Admin GraphQL's currentAppInstallation --
+ * Shopify App Pricing subscriptions are visible there too, not only through
+ * the Partner API. This module calls that same field directly so one code
+ * path works both in live routes (authenticate.admin) and the background
+ * scheduler (unauthenticated.admin, which has no `billing` helper at all
+ * since it isn't tied to a live request).
+ *
+ * Query validated against the live Admin GraphQL schema via the Shopify
+ * dev MCP before being written here -- not guessed.
+ */
+
+export type PlanTier = "starter" | "pro";
+
+export interface PlanLimits {
+  /** null = unlimited */
+  skuCap: number | null;
+  scheduleIntervalMinutes: number;
+}
+
+// Keys here must match the plan's "Plan name for merchant invoices" set in
+// the Partner Dashboard exactly (case-insensitively) -- AppSubscription.name
+// is the only signal available to tell plans apart from Admin GraphQL. If
+// the Dashboard plan name is ever renamed, update PLAN_NAME_TO_TIER too.
+export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
+  starter: { skuCap: 800, scheduleIntervalMinutes: 720 }, // 2x/day
+  pro: { skuCap: null, scheduleIntervalMinutes: 288 }, // 5x/day
+};
+
+const PLAN_NAME_TO_TIER: Record<string, PlanTier> = {
+  starter: "starter",
+  pro: "pro",
+};
+
+interface AdminClient {
+  graphql: (
+    query: string,
+    options?: { variables?: Record<string, unknown> },
+  ) => Promise<Response>;
+}
+
+export interface BillingStatus {
+  tier: PlanTier | null;
+  subscriptionName: string | null;
+  appHandle: string;
+}
+
+const BILLING_STATUS_QUERY = `#graphql
+  query metalRateSyncBillingStatus {
+    currentAppInstallation {
+      app {
+        handle
+      }
+      activeSubscriptions {
+        name
+        status
+        test
+      }
+    }
+  }
+`;
+
+/**
+ * Single source of truth for "does this shop have an active plan, and
+ * which one." Always fetched fresh, never cached -- this gates real
+ * access; a stale cache could wrongly let a canceled shop keep syncing or
+ * wrongly lock out someone who just paid. isTest subscriptions (dev
+ * stores, the reviewer, Chris's eventual private plan) count as active --
+ * status ACTIVE is the only gate, matching how Shopify itself treats them.
+ */
+export async function getBillingStatus(
+  admin: AdminClient,
+): Promise<BillingStatus> {
+  const response = await admin.graphql(BILLING_STATUS_QUERY);
+  const payload = (await response.json()) as {
+    data?: {
+      currentAppInstallation?: {
+        app?: { handle: string };
+        activeSubscriptions?: Array<{
+          name: string;
+          status: string;
+          test: boolean;
+        }>;
+      };
+    };
+  };
+  const installation = payload.data?.currentAppInstallation;
+  const active = installation?.activeSubscriptions?.find(
+    (sub) => sub.status === "ACTIVE",
+  );
+  const tier = active
+    ? (PLAN_NAME_TO_TIER[active.name.trim().toLowerCase()] ?? null)
+    : null;
+  return {
+    tier,
+    subscriptionName: active?.name ?? null,
+    appHandle: installation?.app?.handle ?? "",
+  };
+}
+
+/** Shopify's hosted plan-selection page -- see architecture.md "Billing" for why. */
+export function planSelectionUrl(shop: string, appHandle: string): string {
+  const storeHandle = shop.replace(/\.myshopify\.com$/, "");
+  return `https://admin.shopify.com/store/${storeHandle}/charges/${appHandle}/pricing_plans`;
+}
+
+/**
+ * Loader-side gate. Returns a Response to redirect if there's no active
+ * plan -- the caller must `return` it directly (React Router treats a
+ * returned Response from a loader as a redirect; this can't be thrown,
+ * and a plain `redirect()` from react-router can't escape the embedded
+ * iframe, which is why this uses the framework's own iframe-aware
+ * `redirect` helper from authenticate.admin instead). Returns the tier
+ * otherwise.
+ */
+export async function requirePlanOrRedirect(
+  admin: AdminClient,
+  redirectFn: (
+    url: string,
+    init?: { target?: "_self" | "_parent" | "_top" | "_blank" },
+  ) => Response,
+  shop: string,
+): Promise<PlanTier | Response> {
+  const status = await getBillingStatus(admin);
+  if (!status.tier) {
+    return redirectFn(planSelectionUrl(shop, status.appHandle), {
+      target: "_top",
+    });
+  }
+  return status.tier;
+}
+
+/**
+ * Action-side gate (defense in depth). Loaders only run on navigation, not
+ * on a fetcher.submit POST to an already-mounted page -- a merchant could
+ * cancel their subscription in another tab and still fire actions on a
+ * stale page. Every mutating action must independently re-check billing
+ * rather than trusting the layout loader already gated it. This is the
+ * actual security boundary; the loader redirect is just the normal-path UX.
+ */
+export async function requireActivePlan(
+  admin: AdminClient,
+): Promise<{ ok: true; tier: PlanTier } | { ok: false; message: string }> {
+  const status = await getBillingStatus(admin);
+  if (!status.tier) {
+    return {
+      ok: false,
+      message:
+        "Your subscription isn't active. Pick a plan in Settings to continue.",
+    };
+  }
+  return { ok: true, tier: status.tier };
+}

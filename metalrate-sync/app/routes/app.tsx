@@ -4,9 +4,22 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
 import { authenticate } from "../shopify.server";
+import { requirePlanOrRedirect } from "../services/billing.server";
 
+// Single enforcement point for every /app/* page: this layout loader runs
+// before ANY nested route, so gating here covers the whole app without
+// repeating the check in each page. (Actions still re-check independently
+// -- see billing.server.ts requireActivePlan -- since a fetcher.submit on
+// an already-mounted page doesn't re-run this loader.)
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { admin, session, redirect } = await authenticate.admin(request);
+
+  const planOrRedirect = await requirePlanOrRedirect(
+    admin,
+    redirect,
+    session.shop,
+  );
+  if (planOrRedirect instanceof Response) return planOrRedirect;
 
   // eslint-disable-next-line no-undef
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };

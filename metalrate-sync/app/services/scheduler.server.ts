@@ -2,6 +2,7 @@ import prisma from "../db.server";
 import { unauthenticated } from "../shopify.server";
 import { executeSync } from "./sync.server";
 import { isSyncDue } from "./scheduling.server";
+import { getBillingStatus, PLAN_LIMITS } from "./billing.server";
 
 /**
  * In-process scheduler for automatic syncing. Suitable for a long-running
@@ -47,6 +48,42 @@ async function runScheduledSync(shop: string): Promise<void> {
   let failureMessage: string | null = null;
   try {
     const { admin } = await unauthenticated.admin(shop);
+
+    // Billing lapse check: a subscription can be canceled between ticks --
+    // without this, a canceled shop with scheduleEnabled=true would keep
+    // attempting real syncs (and real price writes) forever. This isn't a
+    // transient error, so it's handled separately from the failure-count
+    // breaker below: disable scheduling immediately rather than waiting for
+    // MAX_CONSECUTIVE_FAILURES retries of something that will never recover
+    // on its own.
+    const billing = await getBillingStatus(admin);
+    if (!billing.tier) {
+      await prisma.shopSettings
+        .update({
+          where: { shop },
+          data: {
+            scheduleEnabled: false,
+            lastScheduleError:
+              "Automatic sync paused: no active subscription plan.",
+          },
+        })
+        .catch(() => {
+          // Shop settings row may have been deleted (app uninstalled mid-run) — fine to ignore.
+        });
+      console.warn(`[scheduler] disabled scheduling for ${shop}: no active plan`);
+      return;
+    }
+
+    // Sync frequency is plan-controlled and can change if the merchant
+    // switches tiers (or a plan is edited in the Dashboard) -- re-derive the
+    // live interval here every run rather than trusting whatever was last
+    // saved, so a tier change takes effect on the very next tick instead of
+    // waiting for the merchant to revisit Settings.
+    const liveIntervalMinutes = PLAN_LIMITS[billing.tier].scheduleIntervalMinutes;
+    await prisma.shopSettings
+      .update({ where: { shop }, data: { scheduleInterval: liveIntervalMinutes } })
+      .catch(() => {});
+
     await executeSync(admin, shop, "scheduled");
   } catch (error) {
     failureMessage = error instanceof Error ? error.message : String(error);

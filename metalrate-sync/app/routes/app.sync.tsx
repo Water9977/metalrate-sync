@@ -19,6 +19,7 @@ import {
   RATE_TTL_MINUTES,
   type MetalRate,
 } from "../services/rates.server";
+import { requireActivePlan } from "../services/billing.server";
 import { METAL_LABELS, METAL_TONE } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -87,6 +88,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   try {
+    // Defense in depth: see app.formulas.tsx for why actions can't just
+    // trust the app.tsx layout loader already gated this. Apply is the
+    // single most consequential action in the app -- it's the one that
+    // actually changes real Shopify prices, so this check matters most here.
+    const plan = await requireActivePlan(admin);
+    if (!plan.ok) return { ok: false, runId: null, message: plan.message };
+
     const payload = (await request.json()) as { snapshotId?: number };
     const snapshot = await prisma.previewSnapshot.findUnique({
       where: { shop },

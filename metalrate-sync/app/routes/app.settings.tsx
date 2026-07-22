@@ -10,6 +10,12 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { getSettings, SCHEDULE_INTERVAL_MINUTES } from "../services/rates.server";
+import {
+  getBillingStatus,
+  requireActivePlan,
+  planSelectionUrl,
+  PLAN_LIMITS,
+} from "../services/billing.server";
 import { METAL_LABELS, SUPPORTED_METALS, INDIA_RATE_CITIES } from "../constants";
 
 function describeInterval(minutes: number): string {
@@ -25,10 +31,17 @@ function describeInterval(minutes: number): string {
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   const settings = await getSettings(shop);
   const manualRates = await prisma.manualRate.findMany({ where: { shop } });
+  // Not re-gated here (app.tsx already redirected if there's no active
+  // plan) -- just reading the tier to show real numbers on this page.
+  const billing = await getBillingStatus(admin);
+  const enabledCount = await prisma.variantConfig.count({
+    where: { shop, enabled: true },
+  });
+  const limits = billing.tier ? PLAN_LIMITS[billing.tier] : null;
   return {
     settings: {
       rateProvider: settings.rateProvider,
@@ -36,9 +49,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       rateCity: settings.rateCity ?? "",
       baseCurrency: settings.baseCurrency,
       scheduleEnabled: settings.scheduleEnabled,
-      scheduleIntervalMinutes: SCHEDULE_INTERVAL_MINUTES,
+      scheduleIntervalMinutes: limits?.scheduleIntervalMinutes ?? SCHEDULE_INTERVAL_MINUTES,
       scheduleFailureCount: settings.scheduleFailureCount,
       lastScheduleError: settings.lastScheduleError,
+    },
+    plan: {
+      tier: billing.tier,
+      subscriptionName: billing.subscriptionName,
+      skuCap: limits?.skuCap ?? null,
+      enabledCount,
+      upgradeUrl: planSelectionUrl(shop, billing.appHandle),
     },
     manualRates: Object.fromEntries(
       manualRates.map((rate) => [rate.metal, rate.pricePerGram]),
@@ -47,8 +67,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
+
+  // Defense in depth: see app.formulas.tsx for why actions can't just
+  // trust the app.tsx layout loader already gated this.
+  const plan = await requireActivePlan(admin);
+  if (!plan.ok) return plan;
+
   const form = await request.formData();
   const intent = String(form.get("intent"));
 
@@ -56,6 +82,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const providerInput = String(form.get("rateProvider") ?? "mock");
     const rateCityInput = String(form.get("rateCity") ?? "").trim();
     const currencyInput = String(form.get("baseCurrency") ?? "USD").toUpperCase();
+    // Sync frequency is server-controlled and plan-dependent -- not a
+    // merchant-set field. Re-derive from the shop's actual tier rather
+    // than trusting whatever was last saved.
+    const scheduleIntervalMinutes =
+      PLAN_LIMITS[plan.tier].scheduleIntervalMinutes;
     await prisma.shopSettings.upsert({
       where: { shop },
       update: {
@@ -70,16 +101,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           : {}),
         baseCurrency: currencyInput,
         scheduleEnabled: form.get("scheduleEnabled") === "on",
-        // Sync frequency is server-controlled (SCHEDULE_INTERVAL_MINUTES),
-        // not a merchant-set field -- see rates.server.ts for why.
-        scheduleInterval: SCHEDULE_INTERVAL_MINUTES,
+        scheduleInterval: scheduleIntervalMinutes,
       },
       create: {
         shop,
         rateProvider: providerInput,
         rateCity: rateCityInput || null,
         baseCurrency: currencyInput,
-        scheduleInterval: SCHEDULE_INTERVAL_MINUTES,
+        scheduleInterval: scheduleIntervalMinutes,
       },
     });
     // No cache bust needed anymore: the rate cache is global and keyed by
@@ -111,7 +140,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Settings() {
-  const { settings, manualRates } = useLoaderData<typeof loader>();
+  const { settings, plan, manualRates } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const manualFetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
@@ -129,6 +158,44 @@ export default function Settings() {
 
   return (
     <s-page heading="Settings">
+      <s-section heading="Plan">
+        <s-stack direction="block" gap="base">
+          {plan.tier ? (
+            <>
+              <s-paragraph>
+                <s-text type="strong">
+                  {plan.subscriptionName ?? (plan.tier === "pro" ? "Pro" : "Starter")}
+                </s-text>{" "}
+                plan —{" "}
+                {plan.skuCap == null
+                  ? `${plan.enabledCount} SKU${plan.enabledCount === 1 ? "" : "s"} tracked, unlimited on this plan`
+                  : `${plan.enabledCount} of ${plan.skuCap} SKUs tracked`}
+                . Auto-sync every{" "}
+                {describeInterval(settings.scheduleIntervalMinutes)}.
+              </s-paragraph>
+              {plan.skuCap != null && plan.enabledCount >= plan.skuCap && (
+                <s-banner tone="warning" heading="SKU limit reached">
+                  You're at your plan's {plan.skuCap}-SKU limit. Upgrade to
+                  Pro for unlimited SKUs and faster auto-sync.
+                </s-banner>
+              )}
+              {plan.tier === "starter" && (
+                <s-button
+                  variant="secondary"
+                  onClick={() => window.open(plan.upgradeUrl, "_top")}
+                >
+                  Upgrade to Pro
+                </s-button>
+              )}
+            </>
+          ) : (
+            <s-banner tone="critical" heading="No active plan">
+              Your subscription isn't active. Pick a plan to keep syncing.
+            </s-banner>
+          )}
+        </s-stack>
+      </s-section>
+
       <s-section heading="Rate source">
         <fetcher.Form method="POST">
           <input type="hidden" name="intent" value="saveSettings" />
