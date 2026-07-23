@@ -1,13 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getLiveRates, type LiveTick } from "./lib/rates";
 
 const CONTACT_EMAIL = "metalratesync@gmail.com";
 
-const TICKS = [
-  { metal: "GOLD", price: "4,017.99", dir: "up" as const },
-  { metal: "SILVER", price: "55.91", dir: "up" as const },
-  { metal: "PLATINUM", price: "1,597.66", dir: "down" as const },
-  { metal: "PALLADIUM", price: "1,249.71", dir: "up" as const },
+// Shown only if the live fetch fails or the key isn't configured — never
+// silently blank, never presented as live when it isn't.
+const FALLBACK_TICKS: LiveTick[] = [
+  { metal: "GOLD", price: "4,017.99" },
+  { metal: "SILVER", price: "55.91" },
+  { metal: "PLATINUM", price: "1,597.66" },
+  { metal: "PALLADIUM", price: "1,249.71" },
 ];
 
 const FEATURES = [
@@ -146,31 +149,51 @@ const FAQS = [
   },
 ];
 
-function Ticker() {
+function Ticker({ ticks, isLive, fetchedAt }: TickerProps) {
   return (
     <div className="ticker" aria-label="Metal spot rates">
       <div className="ticker-inner">
-        {TICKS.map((t) => (
+        {ticks.map((t) => (
           <div className="tick" key={t.metal}>
             <span className="tick-metal">{t.metal}</span>
             <span className="tick-price">${t.price}</span>
-            <span
-              className={`tick-dir ${t.dir}`}
-              aria-label={t.dir === "up" ? "rising" : "falling"}
-            >
-              {t.dir === "up" ? "▲" : "▼"}
-            </span>
+            {isLive && (
+              <span className="tick-live" aria-label="live" title="Live rate">
+                ●
+              </span>
+            )}
           </div>
         ))}
       </div>
       <p className="ticker-caption">
-        USD / troy oz · sample rates — live inside the app
+        {isLive
+          ? `USD / troy oz · live rate, refreshed a few times daily${
+              fetchedAt
+                ? ` · as of ${fetchedAt.toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    timeZoneName: "short",
+                  })}`
+                : ""
+            }`
+          : "USD / troy oz · sample rates — live inside the app"}
       </p>
     </div>
   );
 }
 
-export default function Home() {
+interface TickerProps {
+  ticks: LiveTick[];
+  isLive: boolean;
+  fetchedAt: Date | null;
+}
+
+export default async function Home() {
+  const live = await getLiveRates();
+  const ticks = live?.ticks ?? FALLBACK_TICKS;
+  const isLive = Boolean(live);
+  const fetchedAt = live?.fetchedAt ?? null;
+
   return (
     <>
       <nav className="nav" aria-label="Main">
@@ -234,7 +257,7 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <Ticker />
+          <Ticker ticks={ticks} isLive={isLive} fetchedAt={fetchedAt} />
         </header>
 
         <section className="section" aria-labelledby="trust-heading">

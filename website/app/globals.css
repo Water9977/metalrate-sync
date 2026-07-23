@@ -359,12 +359,22 @@ a {
   color: var(--text);
 }
 
-.tick-dir {
-  font-size: 11px;
+.tick-live {
+  font-size: 8px;
+  color: var(--up);
+  animation: pulse 2s ease-in-out infinite;
 }
 
-.tick-dir.up { color: var(--up); }
-.tick-dir.down { color: var(--down); }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tick-live {
+    animation: none;
+  }
+}
 
 .ticker-caption {
   max-width: var(--maxw);
