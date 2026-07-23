@@ -228,6 +228,10 @@ export default function Home() {
               <p className="hero-note">
                 14-day free trial at launch · no rate-feed subscription needed
               </p>
+              <p className="hero-note hero-note-store">
+                Listed on the Shopify App Store as{" "}
+                <strong>Ounce: MetalRate Sync</strong>
+              </p>
             </div>
           </div>
           <Ticker />
