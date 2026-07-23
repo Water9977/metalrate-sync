@@ -71,6 +71,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "MetalRate Sync",
+  alternateName: "Ounce: MetalRate Sync",
   operatingSystem: "Web",
   applicationCategory: "BusinessApplication",
   description:

@@ -117,6 +117,12 @@ const SHOTS = [
   },
 ];
 
+const WALKTHROUGH_YOUTUBE_ID = "IgCd8v6jm5k";
+const WALKTHROUGH_LOOMS = [
+  { id: "bcb859e66b9e4b7aa8ed44bf4591608b", label: "Live test, part 1 — formulas & product setup" },
+  { id: "d41444a3f9734e62b91e0a6bc041f80a", label: "Live test, part 2 — preview, sync & history" },
+];
+
 const FAQS = [
   {
     q: "Do I need my own rate feed or API key?",
@@ -176,6 +182,7 @@ export default function Home() {
           <div className="nav-links">
             <a href="#features">Features</a>
             <a href="#screens">Inside the app</a>
+            <a href="#demo">Watch it work</a>
             <a href="#pricing">Pricing</a>
             <a href="#faq">FAQ</a>
           </div>
@@ -343,6 +350,60 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="section" id="demo" aria-labelledby="demo-heading">
+          <div className="wrap">
+            <div className="section-head">
+              <h2 id="demo-heading">
+                Watch it <em>actually work</em>
+              </h2>
+              <p>
+                No slides, no mockups — a real store, real rates, real prices
+                changing. The full walkthrough first, then the unedited
+                testing sessions it was cut from.
+              </p>
+            </div>
+
+            <div className="demo-featured">
+              <div className="video-frame">
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${WALKTHROUGH_YOUTUBE_ID}`}
+                  title="MetalRate Sync — full walkthrough"
+                  loading="lazy"
+                  allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+              <div className="demo-featured-copy">
+                <span className="kicker">Full walkthrough · 2:50</span>
+                <h3>From formula to a live price change</h3>
+                <p>
+                  Set a pricing formula, assign it to a product, preview the
+                  diff against a live rate, then apply it and watch the price
+                  actually update in the store — start to finish, in under
+                  three minutes.
+                </p>
+              </div>
+            </div>
+
+            <div className="demo-grid">
+              {WALKTHROUGH_LOOMS.map((v) => (
+                <div className="demo-card" key={v.id}>
+                  <div className="video-frame">
+                    <iframe
+                      src={`https://www.loom.com/embed/${v.id}`}
+                      title={v.label}
+                      loading="lazy"
+                      allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                  <p className="demo-card-label">{v.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section
           className="section"
           id="pricing"
@@ -454,7 +515,8 @@ export default function Home() {
           <Link href="/terms">Terms</Link>
           <span className="footer-tag">
             Built for people who sell metal by weight. ©{" "}
-            {new Date().getFullYear()} MetalRate Sync
+            {new Date().getFullYear()} MetalRate Sync · listed on the Shopify
+            App Store as <strong>Ounce: MetalRate Sync</strong>
           </span>
         </div>
       </footer>
