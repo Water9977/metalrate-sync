@@ -177,7 +177,7 @@ export default function Home() {
         <div className="nav-inner">
           <Link href="/" className="nav-logo">
             <Image src="/images/logo.png" alt="" width={30} height={30} />
-            MetalRate Sync
+            Ounce: MetalRate Sync
           </Link>
           <div className="nav-links">
             <a href="#features">Features</a>
