@@ -2,15 +2,15 @@
 
 Single source of truth for what's left. Cross-linked with [architecture.md](architecture.md) (full narrative/decisions) — this file is the flat checklist to work off of. Slash items as they're done, don't delete them (keep the record).
 
-Last updated: 2026-07-24 (docs site built; 3 new UI bugs logged from live dev-store testing).
+Last updated: 2026-07-24 (full pass: bug fixes actually deployed + verified live, stale items reconciled, new Prisma-upgrade item logged).
 
 ---
 
 ## 🐛 Bugs — found 2026-07-24 on the live dev store, FIXED same day
 
-- [x] **B1 — History "Details" appeared to do nothing.** Root cause found by verifying the URL DID change on click (confirmed with the user) then proving the loader's Prisma query was correct via a real DB test — meaning the click, navigation, and data were all fine. The actual bug: the run-details section rendered *below* the Runs table, so on a run list long enough to fill the screen (the common case, per the user's own screenshot) it was there but off-screen — looked exactly like a dead button. Fixed in [app.history.tsx](metalrate-sync/app/routes/app.history.tsx): moved the details section above the Runs table so it's always immediately visible, added a "← Back to all runs" control (there was previously no way to dismiss it), and added an explicit "Run not found" banner for a run id that doesn't resolve (defensive, was previously silent).
+- [x] **B1 — History "Details" appeared to do nothing. Actually fixed this time, deployed and verified live.** Root cause was two layers: (1) the run-details section rendered *below* the Runs table, so on a run list long enough to fill the screen it was there but off-screen; (2) even after reordering it above the table, React Router doesn't reset scroll position on a same-route search-param navigation, so clicking Details partway down a long list still left the viewport looking at the wrong part of the page. Fixed both in [app.history.tsx](metalrate-sync/app/routes/app.history.tsx): reordered the details section above Runs, added `scrollIntoView` on open, added a "← Back to all runs" control (there was no way to dismiss it before), and an explicit "Run not found" banner for a bad run id (defensive, was previously silent). **First redeploy attempt (2026-07-24) missed this fix entirely** — confirmed live via curl that the old placeholder text was still being served, meaning the redeploy that ran had happened *before* this commit was pushed. Redeployed again for real (`railway up`), confirmed live via curl (placeholder gone, real copy showing). Note: a run where every row was `no_change` will correctly show an *empty* details table — no_change rows never get a `SyncRunItem` row, so there's nothing to display for that specific run. That's expected, not a bug. **Still needs your click-through to fully confirm** — I can't test the embedded admin UI myself.
 - [x] **B2 — verified already safe, no code change needed.** `isChangeBelowThreshold` floors the comparison at `Math.max(0.005, minChangeAmount)`, so an exact 0.00% diff is always classified `no_change` regardless of the formula's threshold setting (even 0). Proved with a real script: pure-math check on the exact value from the user's screenshot (139178.99 → 139178.99), a float-noise case, and an end-to-end `applyPreviewedRows` call with a `no_change` row confirming **zero** `admin.graphql` calls happen and `updatedCount` stays 0. The Apply button is also independently disabled client-side (`app.sync.tsx`) when there's nothing actionable. Two independent layers, both confirmed — not a live bug.
-- [x] **B3 — leftover template placeholder on the public root route, fixed.** `app/routes/_index/route.tsx` (the bare, non-embedded landing page a reviewer or a merchant typing the raw Railway URL directly would hit) still had the untouched Shopify template copy ("A short heading about [your app]", "Product feature. Some detail...", etc). Replaced with real MetalRate Sync copy (heading, tagline, 3 real feature bullets) — kept the functional shop-domain login form as-is, that part was never placeholder. Typecheck + build clean. **Needs a Railway redeploy to go live** (same as B1).
+- [x] **B3 — leftover template placeholder on the public root route, fixed and confirmed live.** `app/routes/_index/route.tsx` (the bare, non-embedded landing page a reviewer or a merchant typing the raw Railway URL directly would hit) still had the untouched Shopify template copy ("A short heading about [your app]", "Product feature. Some detail...", etc). Replaced with real MetalRate Sync copy (heading, tagline, 3 real feature bullets) — kept the functional shop-domain login form as-is, that part was never placeholder. Confirmed live via curl 2026-07-24 (placeholder string gone, real copy present).
 
 ## 🐛 Bugs & loopholes — audit #2 (2026-07-19) — FIXED same day
 
@@ -38,7 +38,8 @@ Fresh audit pass after all audit-#1 fixes shipped. Full detail per finding in [r
 
 **Cosmetic:**
 - [x] M-a — manual rates now tagged with entry currency; base-currency change surfaces a clear "re-enter rates" error instead of silently relabeling
-- [ ] M-b — `lastPrice` from client hidden field, can be stale — accepted (next sync corrects it, fix needs an extra Admin API call per save)
+- [ ] M-b — `lastPrice` from client hidden field, can be stale — **re-checked 2026-07-24, still accurate, no regression.** Grepped `app.products.tsx`: `lastPrice` is still set straight from `form.get("currentPrice")` on both the update and create branches. Still deliberately deferred — next sync self-corrects it, and fixing it properly means an extra Admin API round-trip on every single variant save just to read back the live Shopify price first. Not worth the cost for a value that's cosmetic (display only) and self-heals.
+- [ ] **Prisma major version available (found 2026-07-24 in Railway deploy logs): 6.19.3 → 7.9.0.** Not urgent, not broken — the running app works fine on 6.19.3, this is just Prisma's own update nag printed to the deploy log every boot. Deliberately **not** doing this now: a major-version bump this close to App Store submission is exactly the kind of unforced-error risk to avoid (breaking changes are likely, see [pris.ly/d/major-version-upgrade](https://pris.ly/d/major-version-upgrade)). Do as its own dedicated pass — same treatment as L1 — after submission, not during review prep.
 
 ## 🐛 Bugs — CLOSED (audit #1, 2026-07-18)
 
@@ -60,9 +61,9 @@ All 18 findings resolved 2026-07-18/19 (commit `c9f497e`) — see architecture.m
 - [x] L5 — route-nesting landmine on export-csv (renamed)
 - [x] L6 — dev-machine scheduler fired real syncs while coding (guarded)
 - [ ] L1 — money stored as Float, not Decimal — **deliberately deferred**, see architecture.md, do as its own dedicated pass before real transaction volume, not urgent
-- [ ] L2 — rate-provider API key in URL/plaintext — accepted for current BYO-key dev model, resolves itself once the single app-owned key ships (see Billing/Launch section)
+- [x] L2 — rate-provider API key in URL/plaintext — **resolved by the Q5 architecture (shipped 2026-07-19)**: this was about the old per-merchant BYO-key model; that field no longer exists. The one remaining key (`METALPRICEAPI_KEY`) lives only in a server-side env var, and the URL it's embedded in is only ever constructed inside a server-to-server `fetch` call — never sent to or visible from the browser, never logged with a specific merchant attached to it. The exact resolution this item's own note predicted.
 - [ ] L7 — scheduler is single-instance only — fine at current scale, revisit only if Railway scales to multiple replicas
-- [ ] L8 — Preview loader triggers rate fetches — resolved in practice by the H1 fix, no action needed
+- [x] L8 — Preview loader triggers rate fetches — resolved in practice by the H1 fix, no action needed (checkbox was just never flipped — the note already said this was done)
 
 ---
 
@@ -81,7 +82,7 @@ Full build per explicit instruction ("no loophole and bugs which lets end user m
 
 **What's NOT done — Dashboard-only, can't be scripted:**
 - [x] ~~Create the Starter ($30) and Pro ($50) plans in the Dev Dashboard~~ — **turned out to already be done**, predates this build. Confirmed 2026-07-22: after fixing the redeploy gotcha below, opening the dev store showed Shopify's real hosted "Select a plan" screen with both Starter and Pro correctly configured (right price, right trial, right feature bullets, "$0/30 days — free to test on this store"). Proves the redirect in [billing.server.ts](metalrate-sync/app/services/billing.server.ts) targets the right place and Shopify's plan data renders correctly — real screenshot, not a mock.
-- [ ] Click "Test with this plan" once (either tier) to confirm the return-to-app loop after actually picking a plan — the redirect-out is now proven live, redirect-back-in after picking isn't confirmed yet.
+- [ ] Click "Test with this plan" once (either tier) to confirm the return-to-app loop after actually picking a plan — the redirect-out is now proven live, redirect-back-in after picking isn't confirmed yet. **Confirm: have you done this since the plan-selection screenshot?**
 
 **Redeploy gotcha hit again 2026-07-22**: billing code was pushed to GitHub but the live Railway app kept running the old (2026-07-19) build for 3 days — this service deploys via direct upload (`railway up` / Railway MCP `deploy`), not from GitHub, the exact same gotcha flagged once before under "Deploy-workflow note" below. Redeployed for real, confirmed `HTTP 200` live, then the plan-selection screenshot above proved the gate actually fires.
 
@@ -129,8 +130,8 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 **2. Configuration:**
 - [x] App icon — 1200×1200px set in the Dev Dashboard (done 2026-07-19).
-- [ ] Emergency developer contact — email + phone number.
-- [ ] Double-check all app URLs avoid "Shopify"/"Example" (Railway domain already clean).
+- [ ] Emergency developer contact — email + phone number. **Confirm: have you set this in the Dev Dashboard yet?**
+- [x] Double-check all app URLs avoid "Shopify"/"Example" — **re-verified 2026-07-24**: `metalrate-sync-app-production.up.railway.app` contains neither word.
 - [x] Compliance webhooks (customers/data_request, customers/redact, shop/redact) — already built correctly.
 
 **3. Billing + plan limits** — **code side done 2026-07-22** (see section above). Remaining: create the actual Starter/Pro plans in the Dev Dashboard (exact click path is in the "Required builds" section above, unchanged from the 2026-07-19 research), then click through the flow once live before the listing content below is worth finishing.
@@ -140,16 +141,16 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [x] **App renamed to "Ounce: MetalRate Sync" — 2026-07-20**, per Shopify's own AI listing-review flag: app names can't be a pure functional descriptor, must lead with a distinctive brand word ("QTeck - Announcement Bar" not "Announcement Bar - QTeck"). "MetalRate Sync" alone is just metal+rate+sync — no brand. Picked "Ounce" (troy-ounce reference, checked clear on the App Store via web search). Only the formal listing/TOML name changed — domain (metalratesync.com), logo, and marketing-site copy all stay "MetalRate Sync" as the product's common name. `shopify.app.toml`'s `name` field updated and deployed live (`shopify app deploy`, version `ounce-metalrate-sync-4`).
 - [x] 5 screenshots, exact 1600×900 — cropped from real captures (right-side empty admin whitespace trimmed, nothing meaningful lost): `asset/listing-screenshots/shot-{dashboard,formulas,import,history,settings}.png`.
 - [x] Feature media — **fixed 2026-07-20** after Shopify's own AI listing review flagged the original pedestal illustration as "not informative... only includes a logo, icon, or illustration." Swapped to `asset/listing-screenshots/shot-dashboard.png` (real UI, live rates + last sync). The pedestal render stays on the marketing site hero instead, where illustration is fine.
-- [ ] Demo store URL — a clean dev store showing the app live (fixing the Snowboard test data does double duty here).
+- [x] Demo store URL — the Snowboard joke data appears gone: the 2026-07-24 History screenshot showed real-looking products ("1000g (1kg) Gold Bar 24K 99.99% pure", "10 GRAM 0.999 Pure Silver Bar", "5g Gold Bar 22K pure gold"). **Confirm: is this the actual store you'd submit as the demo store URL, and is it presentable end to end (not just these 3 products)?**
 - [x] Support email address → `metalratesync@gmail.com` (decided 2026-07-19, same address used everywhere).
 - [x] Privacy policy URL → `https://metalratesync.com/privacy`, live.
-- [ ] Pricing entered only in the designated Pricing Details section of the form.
+- [ ] Pricing entered only in the designated Pricing Details section of the form. **Confirm: done, or still to do when you fill out the listing form?**
 - [x] Sales-channel requirements → "My app doesn't require the Shopify Online Store or Shopify POS."
 - [x] Protected customer data → opted out via "My app won't use customer data" + Request.
 
 **5. Review prep:**
-- [ ] Full setup screencast for the reviewer (broader than the Chris Looms — cover everything, not just highlights).
-- [ ] Decide review path for the live-rate feature: either hand over working MetalPriceAPI test credentials, or make sure the built-in **mock** provider mode is enough for the reviewer to verify functionality (safer — no real key handed to Shopify).
+- [ ] Full setup screencast for the reviewer (broader than the Chris Looms — cover everything, not just highlights). **Not done yet** — the YouTube video + 2 Looms on the site are product walkthroughs, not the same thing as a reviewer setup screencast.
+- [ ] Decide review path for the live-rate feature: either hand over working MetalPriceAPI test credentials, or make sure the built-in **mock** provider mode is enough for the reviewer to verify functionality (safer — no real key handed to Shopify). **Recommend: mock mode** — it's already built, already gated with clear warnings (P1), and needs zero extra setup or credential handoff. Confirm you're OK with that, or if you'd rather hand over test creds.
 - [x] Run the Dev Dashboard's automated pre-submission checks, clear every flag — **AI self-review run twice**: [2026-07-20](research/app-store-self-review-2026-07-20.md) and [2026-07-21](research/app-store-self-review-2026-07-21.md). Both: 28 passing, 0 failing, only the same 3 billing items (1.2.1/1.2.2/1.2.3) flagged "needs review" because the tool can't check Dashboard-only state from source code. **Those 3 are now resolved as of 2026-07-22**: billing code is live-deployed and enforcing, and the Starter/Pro plans were confirmed live via a real screenshot of Shopify's hosted plan-selection screen (see "Billing" section above) — nothing left for a hypothetical 3rd self-review pass to flag. Still need to click **Run** on the live "Automated checks for common errors" in the Partner Dashboard itself (a separate, Shopify-side check I can't trigger remotely) once the primary listing language is chosen.
 - [ ] Zero web errors (404/500) and zero UI bugs anywhere reachable during review.
 
@@ -160,11 +161,11 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 **Domain / SEO:**
 - [x] Domain chosen: **metalratesync.com** (purchased 2026-07-19).
 - [x] Marketing site built (2026-07-19 night) — Next.js in [website/](website/), dark premium design matching brand assets: hero with feature render, 4-metal ticker signature, trust pillars, 6 features, 5 real app screenshots, $30/$50 pricing, dealer FAQ, contact (metalratesync@gmail.com), /privacy + /terms, full SEO (per-route metadata + canonicals, OG/Twitter cards, SoftwareApplication JSON-LD, sitemap.xml, robots.txt). Static build clean, visually verified in browser.
-- [ ] **Deploy to Vercel + connect domain (needs your Vercel login, ~10 min):** vercel.com → New Project → import the GitHub repo → set Root Directory to `website` → Deploy → Project Settings → Domains → add metalratesync.com (Vercel shows the exact DNS records to add at your registrar).
-- [ ] Privacy policy URL for the App Store form = `https://metalratesync.com/privacy` once deployed — page content already written and live in the site.
+- [x] **Deploy to Vercel + connect domain** — done. `https://metalratesync.com/` verified live all through this session (HTTP 200, real content, live ticker, /docs page, everything). Auto-deploys on every push to `master` now.
+- [x] Privacy policy URL for the App Store form = `https://metalratesync.com/privacy` — verified live, HTTP 200, 2026-07-24.
 
 **Credential hygiene (do before real merchants, not urgent today):**
-- [ ] Rotate all four credentials exposed in chat/screenshots during setup: MetalPriceAPI key, `SHOPIFY_API_SECRET`, the Railway Postgres password (visible in a 2026-07-19 dashboard screenshot), and treat `SHOPIFY_API_KEY` as public (it is by design). Rotate → update Railway variables + local `.env` → redeploy.
+- [ ] Rotate all four credentials exposed in chat/screenshots during setup: MetalPriceAPI key, `SHOPIFY_API_SECRET`, the Railway Postgres password (visible in a 2026-07-19 dashboard screenshot), and treat `SHOPIFY_API_KEY` as public (it is by design). Rotate → update Railway variables + local `.env` → redeploy. **Confirm: rotated yet, or still pending?** Not urgent (documented as "not urgent today" from the start), but good to track honestly.
 
 **Deploy-workflow note (bit us 2026-07-19):** the Railway service deploys via `railway up` (CLI upload), NOT from GitHub — pushing to GitHub does nothing to production, and Railway's "Redeploy" button just restarts the old image. Either run `railway up` after every change that should ship, or (better) connect the service to the GitHub repo in Railway → Settings → Source so pushes auto-deploy.
 
