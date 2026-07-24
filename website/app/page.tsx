@@ -207,7 +207,7 @@ export default async function Home() {
             <a href="#screens">Inside the app</a>
             <a href="#demo">Watch it work</a>
             <a href="#pricing">Pricing</a>
-            <a href="#faq">FAQ</a>
+            <Link href="/docs">Docs</Link>
           </div>
           <a className="nav-cta" href="#get">
             Get notified
@@ -537,6 +537,7 @@ export default async function Home() {
           </span>
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
+          <Link href="/docs">Docs</Link>
           <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>

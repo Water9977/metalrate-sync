@@ -2,9 +2,15 @@
 
 Single source of truth for what's left. Cross-linked with [architecture.md](architecture.md) (full narrative/decisions) — this file is the flat checklist to work off of. Slash items as they're done, don't delete them (keep the record).
 
-Last updated: 2026-07-22 (billing + plan-limit enforcement shipped in code).
+Last updated: 2026-07-24 (docs site built; 3 new UI bugs logged from live dev-store testing).
 
 ---
+
+## 🐛 Bugs — OPEN (found 2026-07-24 on the live dev store)
+
+- [ ] **B1 — History "Details" does nothing.** On the Sync history page, clicking "Details" on any run row has no effect — no navigation, no drill-down, no modal. Expected: open the per-variant breakdown for that run (the `SyncRunItem` rows) that architecture.md says exists. Check `app.history.tsx` — the Details control is likely not wired to a route/handler, or the drill-down route isn't reachable. This is also a review risk (a visible dead control).
+- [ ] **B2 — A 0% change should never be applyable / shouldn't count as an actionable row.** Preview shows rows at `+0.00%` with a "No change" status (correct), but confirm the Apply path can never push a 0.00% "update" to Shopify — a no-op write still costs an API call and pollutes the audit trail. Verify `sync.server.ts` treats "computed price == current price" (within rounding) as skipped, not updated, everywhere (single apply AND scheduled). If a 0% row can ever be counted as `updated`, fix it so it's always `skipped`.
+- [ ] **B3 — Leftover template placeholder screen on the app's default/login route.** Visiting the app root shows Shopify's untouched template boilerplate ("A short heading about [your app]", "A tagline about [your app]…", "Product feature. Some detail about your feature…") with a raw "Shop domain / Log in" form. This is the template's `app/routes/_index/route.tsx` (or `auth.login`) never customized. Looks unfinished and a reviewer may flag the `[your app]` placeholder text. Replace with real MetalRate Sync copy (or redirect straight into `/app`). **Needs a Railway redeploy after the fix.**
 
 ## 🐛 Bugs & loopholes — audit #2 (2026-07-19) — FIXED same day
 
