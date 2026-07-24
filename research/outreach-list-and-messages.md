@@ -16,6 +16,7 @@
 | Pochy Jewelry | pochyjewelry.com | info@pochyjewelry.com | Miami Cuban link chain manufacturer |
 | ADN Rendon Jeweler | adnrendonjeweler.com | IG @adn_rendon_jeweler (no email found) | Reviewed Metal Updater, custom jewelry, Miami |
 | ORIONZ | orionzjewels.com | support@orionzjewels.com | Reviewed GPE, mens silver jewellery, India |
+| Avianne & Co. | avianneandco.com | avianneandco@gmail.com, (332) 244-4038 | **Left a public 1-star review on Metal Updater on 2026-07-22: "Customer service is horrible, never respond to anything." Fresh, active pain point — lead with this.** NYC Diamond District (28 W 47th St), custom diamond jewelry/engagement rings/watches, confirmed real Shopify store. |
 
 ## Segment B: bullion, coin, precious metals dealers
 
@@ -49,6 +50,16 @@ Hi, I came across your store and saw you deal with gold pricing for your product
 ### For bullion and coin dealers (general)
 
 Hi, I came across your store while looking into how bullion sellers handle live pricing on Shopify. I built an app that syncs product prices with live spot rates, made specifically to handle large catalogs reliably without breaking. It's live now — a couple short walkthroughs here: [Loom 1], [Loom 2], plus screenshots of the bulk import and audit trail attached. Would you be open to trying it free? No pitch here, just trying to figure out if this solves a real problem for you.
+
+### For Avianne & Co. specifically
+
+Same pattern as Scoin Shop/MintedMarket below — they posted a public 1-star review of Metal Updater on 2026-07-22, this exact week, about unresponsive support. Public info they posted themselves, freshest lead on the list right now.
+
+Subject: Saw your Metal Updater review — built an alternative
+
+Hi, I came across your review of Metal Updater and saw the support issue you ran into. I built MetalRate Sync — a Shopify app for exactly this (live gold/silver/platinum/palladium price sync), built specifically around reliability and a support setup that actually answers. It's live and running end to end on a real store right now, not a mockup. A couple short walkthroughs: [Loom 1], [Loom 2] — screenshots of the bulk import and full audit-trail attached too. Would you be open to trying it free and telling me honestly whether it actually solves what you ran into? No pressure, just trying to build something that works for people who had that exact experience.
+
+— [your name], MetalRate Sync (listed on the Shopify App Store as Ounce: MetalRate Sync)
 
 ### For The Scoin Shop and MintedMarket specifically
 
