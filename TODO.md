@@ -82,7 +82,7 @@ Full build per explicit instruction ("no loophole and bugs which lets end user m
 
 **What's NOT done — Dashboard-only, can't be scripted:**
 - [x] ~~Create the Starter ($30) and Pro ($50) plans in the Dev Dashboard~~ — **turned out to already be done**, predates this build. Confirmed 2026-07-22: after fixing the redeploy gotcha below, opening the dev store showed Shopify's real hosted "Select a plan" screen with both Starter and Pro correctly configured (right price, right trial, right feature bullets, "$0/30 days — free to test on this store"). Proves the redirect in [billing.server.ts](metalrate-sync/app/services/billing.server.ts) targets the right place and Shopify's plan data renders correctly — real screenshot, not a mock.
-- [ ] Click "Test with this plan" once (either tier) to confirm the return-to-app loop after actually picking a plan — the redirect-out is now proven live, redirect-back-in after picking isn't confirmed yet. **Confirm: have you done this since the plan-selection screenshot?**
+- [x] Click "Test with this plan" once to confirm the return-to-app loop after actually picking a plan — **confirmed done and working by user 2026-07-24.** Full billing flow (redirect-out AND redirect-back-in) is now proven live end to end, not just via mocks.
 
 **Redeploy gotcha hit again 2026-07-22**: billing code was pushed to GitHub but the live Railway app kept running the old (2026-07-19) build for 3 days — this service deploys via direct upload (`railway up` / Railway MCP `deploy`), not from GitHub, the exact same gotcha flagged once before under "Deploy-workflow note" below. Redeployed for real, confirmed `HTTP 200` live, then the plan-selection screenshot above proved the gate actually fires.
 
@@ -130,7 +130,7 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 **2. Configuration:**
 - [x] App icon — 1200×1200px set in the Dev Dashboard (done 2026-07-19).
-- [ ] Emergency developer contact — email + phone number. **Confirm: have you set this in the Dev Dashboard yet?**
+- [x] Emergency developer contact — email + phone number. **Confirmed done by user 2026-07-24.**
 - [x] Double-check all app URLs avoid "Shopify"/"Example" — **re-verified 2026-07-24**: `metalrate-sync-app-production.up.railway.app` contains neither word.
 - [x] Compliance webhooks (customers/data_request, customers/redact, shop/redact) — already built correctly.
 
@@ -150,7 +150,7 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 
 **5. Review prep:**
 - [ ] Full setup screencast for the reviewer (broader than the Chris Looms — cover everything, not just highlights). **Not done yet** — the YouTube video + 2 Looms on the site are product walkthroughs, not the same thing as a reviewer setup screencast.
-- [ ] Decide review path for the live-rate feature: either hand over working MetalPriceAPI test credentials, or make sure the built-in **mock** provider mode is enough for the reviewer to verify functionality (safer — no real key handed to Shopify). **Recommend: mock mode** — it's already built, already gated with clear warnings (P1), and needs zero extra setup or credential handoff. Confirm you're OK with that, or if you'd rather hand over test creds.
+- [x] Review path for the live-rate feature: **decided 2026-07-24 — Demo rates mode**, not handing over real MetalPriceAPI credentials. It's already built, already gated with clear warnings (P1), and exercises the exact same formula/preview/apply/history flow the reviewer needs to check — just with a placeholder number instead of a real market price. Note for the review-prep screencast/instructions: tell the reviewer to select "Demo rates" in Settings.
 - [x] Run the Dev Dashboard's automated pre-submission checks, clear every flag — **AI self-review run twice**: [2026-07-20](research/app-store-self-review-2026-07-20.md) and [2026-07-21](research/app-store-self-review-2026-07-21.md). Both: 28 passing, 0 failing, only the same 3 billing items (1.2.1/1.2.2/1.2.3) flagged "needs review" because the tool can't check Dashboard-only state from source code. **Those 3 are now resolved as of 2026-07-22**: billing code is live-deployed and enforcing, and the Starter/Pro plans were confirmed live via a real screenshot of Shopify's hosted plan-selection screen (see "Billing" section above) — nothing left for a hypothetical 3rd self-review pass to flag. Still need to click **Run** on the live "Automated checks for common errors" in the Partner Dashboard itself (a separate, Shopify-side check I can't trigger remotely) once the primary listing language is chosen.
 - [ ] Zero web errors (404/500) and zero UI bugs anywhere reachable during review.
 
@@ -165,7 +165,7 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [x] Privacy policy URL for the App Store form = `https://metalratesync.com/privacy` — verified live, HTTP 200, 2026-07-24.
 
 **Credential hygiene (do before real merchants, not urgent today):**
-- [ ] Rotate all four credentials exposed in chat/screenshots during setup: MetalPriceAPI key, `SHOPIFY_API_SECRET`, the Railway Postgres password (visible in a 2026-07-19 dashboard screenshot), and treat `SHOPIFY_API_KEY` as public (it is by design). Rotate → update Railway variables + local `.env` → redeploy. **Confirm: rotated yet, or still pending?** Not urgent (documented as "not urgent today" from the start), but good to track honestly.
+- [x] Rotate all four credentials exposed in chat/screenshots during setup: MetalPriceAPI key, `SHOPIFY_API_SECRET`, the Railway Postgres password (visible in a 2026-07-19 dashboard screenshot), and treat `SHOPIFY_API_KEY` as public (it is by design). **Confirmed done by user 2026-07-24.**
 
 **Deploy-workflow note (bit us 2026-07-19):** the Railway service deploys via `railway up` (CLI upload), NOT from GitHub — pushing to GitHub does nothing to production, and Railway's "Redeploy" button just restarts the old image. Either run `railway up` after every change that should ship, or (better) connect the service to the GitHub repo in Railway → Settings → Source so pushes auto-deploy.
 
