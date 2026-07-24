@@ -249,6 +249,9 @@ export default function Dashboard() {
           </s-paragraph>
           <s-link href="/app/formulas">Manage formulas</s-link>
           <s-link href="/app/products/import">Bulk import from spreadsheet</s-link>
+          <s-link href="https://metalratesync.com/docs" target="_blank">
+            Full documentation &amp; guide
+          </s-link>
         </s-stack>
       </s-section>
     </s-page>

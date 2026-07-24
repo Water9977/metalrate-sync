@@ -37,9 +37,6 @@ export default function App() {
         <s-link href="/app/sync">Preview &amp; Sync</s-link>
         <s-link href="/app/history">History</s-link>
         <s-link href="/app/settings">Settings</s-link>
-        <s-link href="https://metalratesync.com/docs" target="_blank">
-          Help &amp; guides
-        </s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

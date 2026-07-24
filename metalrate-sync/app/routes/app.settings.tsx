@@ -334,6 +334,18 @@ export default function Settings() {
           reliable way to test manually.
         </s-paragraph>
       </s-section>
+
+      <s-section slot="aside" heading="Need help?">
+        <s-stack direction="block" gap="base">
+          <s-paragraph>
+            Formulas, weight units, bulk import, plans and a full FAQ — all in
+            one place.
+          </s-paragraph>
+          <s-link href="https://metalratesync.com/docs" target="_blank">
+            Full documentation &amp; guide
+          </s-link>
+        </s-stack>
+      </s-section>
     </s-page>
   );
 }
