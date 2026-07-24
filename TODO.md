@@ -134,7 +134,7 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [x] Double-check all app URLs avoid "Shopify"/"Example" — **re-verified 2026-07-24**: `metalrate-sync-app-production.up.railway.app` contains neither word.
 - [x] Compliance webhooks (customers/data_request, customers/redact, shop/redact) — already built correctly.
 
-**3. Billing + plan limits** — **code side done 2026-07-22** (see section above). Remaining: create the actual Starter/Pro plans in the Dev Dashboard (exact click path is in the "Required builds" section above, unchanged from the 2026-07-19 research), then click through the flow once live before the listing content below is worth finishing.
+**3. Billing + plan limits** — **fully done, code + Dashboard + live click-through, confirmed 2026-07-24.** Nothing left here.
 
 **4. Listing content:**
 - [x] Confirm "MetalRate Sync" doesn't collide with an existing app name — **verified clear via web search 2026-07-19**: no app by that name; closest are "Metal Updater" and two unrelated "GoldSync" apps. Note: MetalpriceAPI (the rate vendor) ships its own competing Shopify app — no naming conflict, just competitive awareness.
