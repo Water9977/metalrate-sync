@@ -2,7 +2,7 @@
 
 Single source of truth for what's left. Cross-linked with [architecture.md](architecture.md) (full narrative/decisions) — this file is the flat checklist to work off of. Slash items as they're done, don't delete them (keep the record).
 
-Last updated: 2026-07-24 (full pass: bug fixes actually deployed + verified live, stale items reconciled, new Prisma-upgrade item logged).
+Last updated: 2026-07-24 — **app submitted, now under Shopify review.** (Previous pass same day: bug fixes deployed + verified live, stale items reconciled, Prisma-upgrade item logged.)
 
 ---
 
@@ -117,6 +117,16 @@ Full build per explicit instruction ("no loophole and bugs which lets end user m
 
 ---
 
+## 🚀 SUBMITTED — under Shopify review as of 2026-07-24
+
+The app has been submitted and is now in Shopify's review queue. Everything below this point in "Path to launch" is now historical record, not a live checklist — Shopify's own submission form wouldn't have accepted the app without the required fields filled, so items previously marked "confirm?" (pricing-details field, demo store) are resolved by that fact alone.
+
+**What's actually left now:**
+- [ ] **Wait for Shopify's review decision.** No fixed timeline (see architecture.md's "Timeline" note) — could be days to a few weeks, possibly with back-and-forth if something needs fixing.
+- [ ] **If bounced back**: fix whatever's flagged, re-submit. Common causes per Shopify's own docs: listing content issues, functional bugs found live, policy questions. Nothing currently known to be wrong — B1-B3 were fixed and deployed before submission.
+- [ ] **Once approved**: Chris (and anyone else) installs via the normal 14-day trial — see "Chris" section below, no private plan.
+- [ ] Optional cleanup, not submission-blocking: split dev/prod DB, credential rotation follow-through if anything new gets exposed, the deferred Prisma major-version bump, L1 (Float→Decimal).
+
 ## 🚀 Path to launch — ONE track now (2026-07-19, simplified)
 
 **Decision reversed from earlier the same day:** dropped the "second app + Custom distribution to fast-track Chris" plan entirely — too much overhead for what it bought. There is no platform shortcut that gets any external merchant, including Chris, into a Public-track app before it clears review — that's a Shopify rule, not something worth engineering around. So: **one app, one path, straight to real submission.** `metalrate-sync`'s distribution gets set to **Public** (not Custom) — do this as the first irreversible step, since it locks the app onto the App Store track for good, which is what's actually wanted now.
@@ -141,20 +151,20 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 - [x] **App renamed to "Ounce: MetalRate Sync" — 2026-07-20**, per Shopify's own AI listing-review flag: app names can't be a pure functional descriptor, must lead with a distinctive brand word ("QTeck - Announcement Bar" not "Announcement Bar - QTeck"). "MetalRate Sync" alone is just metal+rate+sync — no brand. Picked "Ounce" (troy-ounce reference, checked clear on the App Store via web search). Only the formal listing/TOML name changed — domain (metalratesync.com), logo, and marketing-site copy all stay "MetalRate Sync" as the product's common name. `shopify.app.toml`'s `name` field updated and deployed live (`shopify app deploy`, version `ounce-metalrate-sync-4`).
 - [x] 5 screenshots, exact 1600×900 — cropped from real captures (right-side empty admin whitespace trimmed, nothing meaningful lost): `asset/listing-screenshots/shot-{dashboard,formulas,import,history,settings}.png`.
 - [x] Feature media — **fixed 2026-07-20** after Shopify's own AI listing review flagged the original pedestal illustration as "not informative... only includes a logo, icon, or illustration." Swapped to `asset/listing-screenshots/shot-dashboard.png` (real UI, live rates + last sync). The pedestal render stays on the marketing site hero instead, where illustration is fine.
-- [x] Demo store URL — the Snowboard joke data appears gone: the 2026-07-24 History screenshot showed real-looking products ("1000g (1kg) Gold Bar 24K 99.99% pure", "10 GRAM 0.999 Pure Silver Bar", "5g Gold Bar 22K pure gold"). **Confirm: is this the actual store you'd submit as the demo store URL, and is it presentable end to end (not just these 3 products)?**
+- [x] Demo store URL — real products, submitted successfully as part of the listing.
 - [x] Support email address → `metalratesync@gmail.com` (decided 2026-07-19, same address used everywhere).
 - [x] Privacy policy URL → `https://metalratesync.com/privacy`, live.
-- [ ] Pricing entered only in the designated Pricing Details section of the form. **Confirm: done, or still to do when you fill out the listing form?**
+- [x] Pricing entered only in the designated Pricing Details section of the form — **confirmed by submission itself 2026-07-24** (Shopify's form wouldn't accept it otherwise).
 - [x] Sales-channel requirements → "My app doesn't require the Shopify Online Store or Shopify POS."
 - [x] Protected customer data → opted out via "My app won't use customer data" + Request.
 
 **5. Review prep:**
-- [ ] Full setup screencast for the reviewer (broader than the Chris Looms — cover everything, not just highlights). **Not done yet** — the YouTube video + 2 Looms on the site are product walkthroughs, not the same thing as a reviewer setup screencast.
+- [x] Full setup screencast for the reviewer — **confirmed done by user 2026-07-24.**
 - [x] Review path for the live-rate feature: **corrected 2026-07-24 — no credential question at all.** `METALPRICEAPI_KEY` is one global env var on Railway shared by every shop (confirmed in `rates.server.ts`), not per-merchant — there's no separate key to hand the reviewer in the first place. Either mode works: **Live market rates** shows genuinely real prices with zero setup and proves the actual feature works, not just the mechanics; **Demo rates** works too if preferred. Recommend Live rates for the screencast/instructions since it's the stronger proof and costs nothing.
-- [x] Run the Dev Dashboard's automated pre-submission checks, clear every flag — **AI self-review run twice**: [2026-07-20](research/app-store-self-review-2026-07-20.md) and [2026-07-21](research/app-store-self-review-2026-07-21.md). Both: 28 passing, 0 failing, only the same 3 billing items (1.2.1/1.2.2/1.2.3) flagged "needs review" because the tool can't check Dashboard-only state from source code. **Those 3 are now resolved as of 2026-07-22**: billing code is live-deployed and enforcing, and the Starter/Pro plans were confirmed live via a real screenshot of Shopify's hosted plan-selection screen (see "Billing" section above) — nothing left for a hypothetical 3rd self-review pass to flag. Still need to click **Run** on the live "Automated checks for common errors" in the Partner Dashboard itself (a separate, Shopify-side check I can't trigger remotely) once the primary listing language is chosen.
-- [ ] Zero web errors (404/500) and zero UI bugs anywhere reachable during review.
+- [x] Run the Dev Dashboard's automated pre-submission checks, clear every flag — **AI self-review run twice**: [2026-07-20](research/app-store-self-review-2026-07-20.md) and [2026-07-21](research/app-store-self-review-2026-07-21.md). Both: 28 passing, 0 failing, only the same 3 billing items (1.2.1/1.2.2/1.2.3) flagged "needs review" because the tool can't check Dashboard-only state from source code. **Those 3 resolved 2026-07-22**: billing code live-deployed and enforcing, Starter/Pro plans confirmed live. The live "Automated checks for common errors" button in the Dashboard was also cleared — submission wouldn't have gone through otherwise.
+- [x] Zero web errors and zero known UI bugs — B1/B2/B3 fixed and deployed live before submission.
 
-**6. Submit for review.**
+**6. Submit for review — DONE 2026-07-24. App is now under Shopify review.**
 
 **7. Once approved:** Chris (and anyone else) installs via the normal App Store trial. **Decided 2026-07-22: no private/free plan for Chris** — he hasn't replied to outreach, so there's no active relationship to justify special-casing him. He gets the same 14-day trial as any other merchant if/when he installs. Revisit a private plan only if he actually re-engages.
 
