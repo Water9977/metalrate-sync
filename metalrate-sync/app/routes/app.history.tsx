@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -87,6 +88,20 @@ const ITEM_TONE: Record<string, "success" | "warning" | "critical" | "neutral"> 
 export default function History() {
   const { runs, selectedRun, requestedRunId } = useLoaderData<typeof loader>();
   const [, setSearchParams] = useSearchParams();
+  const detailsRef = useRef<HTMLElement>(null);
+
+  // B1 follow-up: reordering the details section above the Runs table only
+  // fixes WHERE it sits in the DOM -- it does nothing for WHERE the viewport
+  // is already scrolled to. React Router doesn't reset scroll position on a
+  // same-route search-param navigation, so clicking Details on, say, row 20
+  // of a long list left the viewport exactly where it was -- looking at the
+  // middle of the Runs table, with the (now-reordered) details section
+  // sitting further up, still off-screen. Scroll it into view explicitly.
+  useEffect(() => {
+    if (selectedRun && detailsRef.current) {
+      detailsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedRun?.id]);
 
   return (
     <s-page heading="Sync history" inlineSize="large">
@@ -107,7 +122,10 @@ export default function History() {
         // list long enough to fill the screen (the common case), clicking
         // Details appeared to do nothing -- the new section was there, just
         // off-screen. Showing it first means it's always immediately visible.
-        <s-section heading={`Run #${selectedRun.id} details`}>
+        <s-section
+          ref={detailsRef as React.Ref<never>}
+          heading={`Run #${selectedRun.id} details`}
+        >
           <s-stack direction="block" gap="base">
             <s-button
               variant="tertiary"
