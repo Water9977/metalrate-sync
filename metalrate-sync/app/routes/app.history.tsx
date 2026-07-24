@@ -89,6 +89,9 @@ export default function History() {
   const { runs, selectedRun, requestedRunId } = useLoaderData<typeof loader>();
   const [, setSearchParams] = useSearchParams();
   const detailsRef = useRef<HTMLElement>(null);
+  const selectedRunSummary = selectedRun
+    ? runs.find((run) => run.id === selectedRun.id)
+    : undefined;
 
   // B1 follow-up: reordering the details section above the Runs table only
   // fixes WHERE it sits in the DOM -- it does nothing for WHERE the viewport
@@ -148,6 +151,16 @@ export default function History() {
                 </s-badge>
               ))}
             </s-stack>
+            {selectedRun.items.length === 0 ? (
+              // A run where every row was "no_change" gets zero SyncRunItem
+              // rows by design (see runBatchedApply) -- an empty table with
+              // no explanation looked exactly like a bug. Say why instead.
+              <s-banner tone="info">
+                {selectedRunSummary
+                  ? `This run checked ${selectedRunSummary.totalItems} tracked variant${selectedRunSummary.totalItems === 1 ? "" : "s"} against the live rate — all of them already matched, so nothing needed updating.`
+                  : "This run had nothing to update — every tracked variant already matched the live rate at the time."}
+              </s-banner>
+            ) : (
             <s-table variant="auto">
               <s-table-header-row>
                 <s-table-header listSlot="primary">Variant</s-table-header>
@@ -181,6 +194,7 @@ export default function History() {
                 ))}
               </s-table-body>
             </s-table>
+            )}
           </s-stack>
         </s-section>
       )}
