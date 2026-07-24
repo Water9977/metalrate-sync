@@ -820,6 +820,17 @@ a {
   max-width: 62ch;
 }
 
+.faq-more {
+  margin-top: 28px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.faq-more a {
+  color: var(--gold);
+  border-bottom: 1px solid var(--gold-deep);
+}
+
 /* ---------- contact / final CTA ---------- */
 
 .final {

@@ -21,9 +21,10 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <h1 className={styles.heading}>A short heading about [your app]</h1>
+        <h1 className={styles.heading}>Ounce: MetalRate Sync</h1>
         <p className={styles.text}>
-          A tagline about [your app] that describes your value proposition.
+          Reprice your Shopify catalog from live gold, silver, platinum and
+          palladium rates — with a full preview before anything changes.
         </p>
         {showForm && (
           <Form className={styles.form} method="post" action="/auth/login">
@@ -39,16 +40,16 @@ export default function App() {
         )}
         <ul className={styles.list}>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Preview before commit</strong>. See every price change —
+            old, new, % — before anything touches your store.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Bulk import by SKU</strong>. Set weights and formulas for
+            a whole catalog in one CSV upload, not one product at a time.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Full audit trail</strong>. Every sync logs what changed,
+            what was skipped, and why — nothing fails silently.
           </li>
         </ul>
       </div>

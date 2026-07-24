@@ -28,6 +28,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   return {
+    requestedRunId: selectedRunId,
     runs: runs.map((run) => ({
       id: run.id,
       status: run.status,
@@ -84,61 +85,36 @@ const ITEM_TONE: Record<string, "success" | "warning" | "critical" | "neutral"> 
 };
 
 export default function History() {
-  const { runs, selectedRun } = useLoaderData<typeof loader>();
+  const { runs, selectedRun, requestedRunId } = useLoaderData<typeof loader>();
   const [, setSearchParams] = useSearchParams();
 
   return (
     <s-page heading="Sync history" inlineSize="large">
-      <s-section heading="Runs">
-        {runs.length === 0 ? (
-          <s-paragraph>
-            No syncs yet. Every run is recorded here with a per-variant audit
-            trail — what changed, what was skipped, and why.
-          </s-paragraph>
-        ) : (
-          <s-table variant="auto">
-            <s-table-header-row>
-              <s-table-header listSlot="primary">Started</s-table-header>
-              <s-table-header>Trigger</s-table-header>
-              <s-table-header>Updated</s-table-header>
-              <s-table-header>Skipped</s-table-header>
-              <s-table-header>Failed</s-table-header>
-              <s-table-header>Status</s-table-header>
-              <s-table-header></s-table-header>
-            </s-table-header-row>
-            <s-table-body>
-              {runs.map((run) => (
-                <s-table-row key={run.id}>
-                  <s-table-cell>
-                    {new Date(run.startedAt).toLocaleString()}
-                  </s-table-cell>
-                  <s-table-cell>{run.trigger}</s-table-cell>
-                  <s-table-cell>{run.updatedCount}</s-table-cell>
-                  <s-table-cell>{run.skippedCount}</s-table-cell>
-                  <s-table-cell>{run.failedCount}</s-table-cell>
-                  <s-table-cell>
-                    <s-badge tone={RUN_TONE[run.status] ?? "info"}>
-                      {run.status.replaceAll("_", " ")}
-                    </s-badge>
-                  </s-table-cell>
-                  <s-table-cell>
-                    <s-button
-                      variant="tertiary"
-                      onClick={() => setSearchParams({ run: String(run.id) })}
-                    >
-                      Details
-                    </s-button>
-                  </s-table-cell>
-                </s-table-row>
-              ))}
-            </s-table-body>
-          </s-table>
-        )}
-      </s-section>
+      {requestedRunId && !selectedRun && (
+        // Defensive: a run id in the URL that doesn't resolve to a real row
+        // (wrong shop, deleted run, bad id) used to just render nothing with
+        // no explanation. Never fail silently.
+        <s-section heading="Run not found">
+          <s-banner tone="warning">
+            Run #{requestedRunId} couldn&apos;t be found. It may have been
+            removed, or the link is out of date.
+          </s-banner>
+        </s-section>
+      )}
 
       {selectedRun && (
+        // B1 fix: this used to render AFTER the Runs table below, so on a
+        // list long enough to fill the screen (the common case), clicking
+        // Details appeared to do nothing -- the new section was there, just
+        // off-screen. Showing it first means it's always immediately visible.
         <s-section heading={`Run #${selectedRun.id} details`}>
           <s-stack direction="block" gap="base">
+            <s-button
+              variant="tertiary"
+              onClick={() => setSearchParams({})}
+            >
+              ← Back to all runs
+            </s-button>
             {selectedRun.totalItemCount > selectedRun.items.length && (
               // S3 fix (audit #2): the 500-item cap used to be silent.
               <s-text color="subdued">
@@ -190,6 +166,53 @@ export default function History() {
           </s-stack>
         </s-section>
       )}
+
+      <s-section heading="Runs">
+        {runs.length === 0 ? (
+          <s-paragraph>
+            No syncs yet. Every run is recorded here with a per-variant audit
+            trail — what changed, what was skipped, and why.
+          </s-paragraph>
+        ) : (
+          <s-table variant="auto">
+            <s-table-header-row>
+              <s-table-header listSlot="primary">Started</s-table-header>
+              <s-table-header>Trigger</s-table-header>
+              <s-table-header>Updated</s-table-header>
+              <s-table-header>Skipped</s-table-header>
+              <s-table-header>Failed</s-table-header>
+              <s-table-header>Status</s-table-header>
+              <s-table-header></s-table-header>
+            </s-table-header-row>
+            <s-table-body>
+              {runs.map((run) => (
+                <s-table-row key={run.id}>
+                  <s-table-cell>
+                    {new Date(run.startedAt).toLocaleString()}
+                  </s-table-cell>
+                  <s-table-cell>{run.trigger}</s-table-cell>
+                  <s-table-cell>{run.updatedCount}</s-table-cell>
+                  <s-table-cell>{run.skippedCount}</s-table-cell>
+                  <s-table-cell>{run.failedCount}</s-table-cell>
+                  <s-table-cell>
+                    <s-badge tone={RUN_TONE[run.status] ?? "info"}>
+                      {run.status.replaceAll("_", " ")}
+                    </s-badge>
+                  </s-table-cell>
+                  <s-table-cell>
+                    <s-button
+                      variant="tertiary"
+                      onClick={() => setSearchParams({ run: String(run.id) })}
+                    >
+                      Details
+                    </s-button>
+                  </s-table-cell>
+                </s-table-row>
+              ))}
+            </s-table-body>
+          </s-table>
+        )}
+      </s-section>
     </s-page>
   );
 }

@@ -132,6 +132,10 @@ const FAQS = [
     a: "No. Live gold, silver, platinum and palladium rates are included with the app — you pick a currency and you're done. If you price off your own board rate instead (IBJA, in-house), Manual entry mode takes your numbers.",
   },
   {
+    q: "How often do prices update, and is it automatic?",
+    a: "Two ways: open Preview & Sync any time and apply changes yourself, or turn on automatic sync and the app reprices in the background — twice a day on Starter, up to five times a day on Pro. Either way, every run is logged.",
+  },
+  {
     q: "Can the app change my prices without me knowing?",
     a: "Only if you turn on automatic sync — and even then, every run is logged per variant in History with the rates used. Manual mode always shows you the full preview first, and applies exactly what you approved, not a recomputed version.",
   },
@@ -142,6 +146,14 @@ const FAQS = [
   {
     q: "I weigh in tola / vori / pennyweight — supported?",
     a: "Yes. Grams, troy ounces, pennyweight (dwt), tola and vori are supported on the product page and as CSV columns (weight_tola, weight_vori, and so on). Conversion happens once, at entry.",
+  },
+  {
+    q: "How big a catalog can it handle?",
+    a: "Starter tracks up to 800 SKUs, Pro is unlimited. Bulk import automatically switches to Shopify's Bulk Operations API for large catalogs, so a thousand-plus-SKU store is read reliably instead of timing out.",
+  },
+  {
+    q: "Do you support India city rates?",
+    a: "Yes, on both Starter and Pro — pick Mumbai, Kolkata, Chennai or Bangalore for a city-specific gold/silver rate instead of the global spot price. Platinum and palladium always use the global rate; no city-level data exists for those two metals anywhere.",
   },
   {
     q: "Does the app read my customers' data?",
@@ -502,6 +514,9 @@ export default async function Home() {
                 </details>
               ))}
             </div>
+            <p className="faq-more">
+              More questions? <Link href="/docs#faq">Read the full docs</Link>
+            </p>
           </div>
         </section>
 
