@@ -1,6 +1,6 @@
-# Outreach list and messages (2026-07-16)
+# Outreach list and messages (2026-07-16, updated 2026-07-24)
 
-20 real Shopify stores, all confirmed on Shopify (checked for cdn.shopify.com / myshopify.com references, not guessed). Split jewelry and bullion since they need different framing. Contact info is only what was actually found on the store's site or app review, nothing made up.
+24 real Shopify stores (20 original + 4 found in the 2026-07-24 review-mining pass), all confirmed on Shopify (checked for cdn.shopify.com / myshopify.com references, not guessed). Split jewelry and bullion since they need different framing. Contact info is only what was actually found on the store's site or app review, nothing made up.
 
 ## Segment A: jewelry (by weight gold or silver)
 
@@ -17,6 +17,12 @@
 | ADN Rendon Jeweler | adnrendonjeweler.com | IG @adn_rendon_jeweler (no email found) | Reviewed Metal Updater, custom jewelry, Miami |
 | ORIONZ | orionzjewels.com | support@orionzjewels.com | Reviewed GPE, mens silver jewellery, India |
 | Avianne & Co. | avianneandco.com | avianneandco@gmail.com, (332) 244-4038 | **Left a public 1-star review on Metal Updater on 2026-07-22: "Customer service is horrible, never respond to anything." Fresh, active pain point — lead with this.** NYC Diamond District (28 W 47th St), custom diamond jewelry/engagement rings/watches, confirmed real Shopify store. |
+| Jewel Ease | jewelease.in | jewelease.in/pages/contact, tel +91 78783 07465 | Reviewed GPE (billing/refund request, not a quality review). Multi-vendor Indian jewelry marketplace (Ganpati/Kishan Lal/Surya Jewellers sub-brands). General lead, no pain point. |
+| Saeed Jewelry (dahabe.com) | dahabe.com | info@saeedjewellery.com, dahabe.com/ar/pages/connect-us | 5★ review on GPE, positive ("very effective, professional staff"). Jordan-based 21k/18k local gold retailer, est. 2015. General lead. |
+| KISHANI (Kishani Jewels) | kishanijewels.com | contact@kishanijewels.com, +91 9370732084 | 5★ review on JewelSync, positive ("very useful, saves manual work"). India-based natural/lab-grown diamond retailer with buyback program. General lead. |
+| Goldschmiede Hecken | goldschmiede-hecken.de | mail@goldschmiede-hecken.de, +49 2228 9129248 | 5★ review on HASH-COM, positive (daily price updates + diamond/labor tracking). Germany-based goldsmith, sub-brand "Dom-Engel." General lead. |
+
+**Review-mining pass #2 (2026-07-24)**: re-checked all 18 competing apps' review pages for new reviewers. Only 4 new (added above), all positive — no fresh pain-point ammunition this round. Confirms the original 2026-07-16 pass was thorough: 22 of 26 total reviewers across the 7 apps that have any reviews were already captured, including every negative review (Scoin Shop, MintedMarket, Avianne, Gold Feed's two 1-stars). This niche's total review volume across all 18 competitors is genuinely small (~26 reviews) — the ceiling here is the market, not the research effort. Pricify's App Store listing has been pulled entirely as of this pass (no longer available).
 
 ## Segment B: bullion, coin, precious metals dealers
 
