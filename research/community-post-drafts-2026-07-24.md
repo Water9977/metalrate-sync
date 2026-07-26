@@ -22,6 +22,13 @@ Would genuinely love feedback from anyone who's built in this space or sells in 
 
 ## r/coins — Self-Promotion Thread only (never the main feed)
 
+**Verified live 2026-07-27 against the actual current thread's AutoMod rules** (user pasted them directly). Confirmed this draft is compliant:
+- Rule/example #1 explicitly says "promoting/linking your coin-related projects (e.g. apps...)" — self-promoting your own app is the *first listed example* of an appropriate post, not a gray area.
+- Rule #8: **max 1-2 top-level comments per day** — post this once, don't repeat it in the same thread or across days.
+- Rule #3/#4: no disparaging other tools, no "name and shame" — this draft doesn't reference or compare to any competitor, stays positive.
+- Comments may sit pending automod approval for a bit — normal, not a rejection.
+- Since these self-promo threads rotate (this one showed as ~25 days old when checked), confirm whichever thread is *currently* pinned/active before posting — don't reply to a stale one.
+
 Post this as a comment/reply inside whatever the current Self-Promotion Thread is when one's live — never as its own post.
 
 Built a Shopify app called MetalRate Sync (App Store listing: "Ounce: MetalRate Sync") for dealers who sell bullion/coins online — syncs your product prices to live spot rates automatically instead of repricing everything by hand. Preview before it applies anything, full audit log of every change, handles big catalogs via bulk CSV import. Just submitted it for Shopify App Store review this week. If you run a Shopify store and this sounds useful, the demo/docs are up at metalratesync.com — happy to answer questions here too.
