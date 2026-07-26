@@ -31,6 +31,20 @@ export default function App() {
   return (
     <AppProvider embedded apiKey={apiKey}>
       <s-app-nav>
+        {/* Without an explicit rel="home" link, Shopify defaults the app-name
+            entry in the admin sidebar to "/" -- our real home is "/app", so
+            clicking the app name (not "Dashboard") landed on the public
+            marketing/login route instead of the embedded dashboard. This
+            link is hidden from the rendered menu (that's what rel="home"
+            does) -- "Dashboard" below stays as the visible entry. */}
+        {/* @shopify/polaris-types' generated Link interface doesn't expose
+            `rel`, even though it's a real, documented app-nav attribute
+            (shopify.dev/docs/api/app-home/app-bridge-web-components/app-nav)
+            -- a type-defs gap, not a runtime one. Spread-cast works around it
+            without a blanket `any` on the element. */}
+        <s-link href="/app" {...({ rel: "home" } as Record<string, string>)}>
+          Home
+        </s-link>
         <s-link href="/app">Dashboard</s-link>
         <s-link href="/app/products">Products</s-link>
         <s-link href="/app/formulas">Formulas</s-link>
