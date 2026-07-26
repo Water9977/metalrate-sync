@@ -1,6 +1,8 @@
 # Outreach list and messages (2026-07-16, updated 2026-07-24)
 
-24 real Shopify stores (20 original + 4 found in the 2026-07-24 review-mining pass), all confirmed on Shopify (checked for cdn.shopify.com / myshopify.com references, not guessed). Split jewelry and bullion since they need different framing. Contact info is only what was actually found on the store's site or app review, nothing made up.
+**48 real Shopify stores** (20 original + 4 from the 2026-07-24 review-mining pass + 24 from the 2026-07-24 broad-discovery pass), all confirmed on Shopify (checked for cdn.shopify.com / myshopify.com / shopify-checkout-api-token references, not guessed). Split jewelry and bullion since they need different framing. Contact info is only what was actually found on the store's site, nothing made up.
+
+**Message templates below are the original 2026-07-19 versions — superseded.** Use [outreach-round-2-2026-07-24.md](outreach-round-2-2026-07-24.md) instead: the app is now submitted/under Shopify review, not installable, so "try it free" language here overclaims. This file is the contact list; that file is the current wording.
 
 ## Segment A: jewelry (by weight gold or silver)
 
@@ -23,6 +25,42 @@
 | Goldschmiede Hecken | goldschmiede-hecken.de | mail@goldschmiede-hecken.de, +49 2228 9129248 | 5★ review on HASH-COM, positive (daily price updates + diamond/labor tracking). Germany-based goldsmith, sub-brand "Dom-Engel." General lead. |
 
 **Review-mining pass #2 (2026-07-24)**: re-checked all 18 competing apps' review pages for new reviewers. Only 4 new (added above), all positive — no fresh pain-point ammunition this round. Confirms the original 2026-07-16 pass was thorough: 22 of 26 total reviewers across the 7 apps that have any reviews were already captured, including every negative review (Scoin Shop, MintedMarket, Avianne, Gold Feed's two 1-stars). This niche's total review volume across all 18 competitors is genuinely small (~26 reviews) — the ceiling here is the market, not the research effort. Pricify's App Store listing has been pulled entirely as of this pass (no longer available).
+
+### New jewelry leads — broad-discovery pass (2026-07-24)
+
+| Store | URL | Contact | Context |
+|---|---|---|---|
+| World Gold Shop | shop-wgs.com | site contact form | US (Austin, TX). Solid gold chains, product titles explicitly state gram weight (e.g. "6.5gm") — already thinks in the same units the app uses. |
+| Virani Jewelers | viranijewelers.com | WhatsApp +1 848-667-3498 | US (NJ). 22K Indian gold jewelry, every product listed with exact gram weight (11.8g, 23.5g, 60.8g...). Strong fit. |
+| **Ta Jewelers** | tajewelers.com | (310) 706-8343 | US (LA Chinatown, since 1988). **Already runs a live scrolling $/oz AND $/gram gold/silver/platinum ticker site-wide** — best personalization hook on this whole list, they clearly already value live-rate transparency. |
+| GOLDZENN | goldzenn.com | site contact form | US (Miami). Handmade 10k/14k/18k Cuban link & tennis chains, custom work. |
+| Sg Gold Shop | sggoldshop.com | WhatsApp +65 9770 2921 | Singapore. Sells gold bars by gram (1g–20g) AND 916/999 gold jewelry — both segments at once. |
+| Best Gold Shop | bestgoldshop.asia | WhatsApp +65 9770 2921, t.me/bestgoldshop | Singapore (Joo Chiat). Already has a dedicated "Live Gold Price Singapore" page on their own site. |
+| Bishops Jewelry Gallery | bishopsjewelry.com | site/maps contact | US (Fairbanks, AK). Backup lead — carries Alaska gold-nugget jewelry, customarily priced by nugget weight. |
+| Baby Gold | babygold.com | babygold.com/pages/contact-us | US (LA). Weaker-fit backup — solid 14K fashion jewelry, mostly fixed retail pricing rather than spot-linked. |
+
+### New bullion/coin leads — broad-discovery pass (2026-07-24)
+
+| Store | URL | Contact | Context |
+|---|---|---|---|
+| **Kzoo Bullion** | kzoobullion.com | info@kzoobullion.com | US (Kalamazoo, MI). **Live gold/silver/platinum/palladium price ticker already on the homepage.** Strong personalization hook. Hand-cast lion silver/gold bars. |
+| **Shop Global Coin** | shopglobalcoin.com | info@shopglobalcoin.com, 1-844-595-9599 | US. **Site-wide live 4-metal ticker built into every page.** Strong hook. |
+| **Redmond Rare Coins** | redmondrarecoins.com | (425) 823-2646 | US (Kirkland/Redmond, WA). **Live TradingView gold/silver ticker on homepage**, dealer since 1995. Strong hook. |
+| RSR Coins | rsrcoins.com | rsr@rsrcoins.com, (203) 359-2646 | US (Fairfield, CT). ANA life member since 1970, PCGS/NGC dealer 40+ yrs, dedicated Bullion collection (133 items). |
+| Big Apple Coins | bigapplecoins.com | bigapplecoins.com/pages/contact, (212) 321-0073 | US (NYC Diamond District). Dedicated Gold/Silver/Platinum Bullion collections + appraisal funnel. |
+| Double Diamond Bullion | ddbullion.com | ddbullion.com/pages/contact-us | US (Allentown, PA). Numismatic coins + hand-poured silver art + gold/platinum bars. |
+| Boardwalk Numismatics | boardwalknumismatics.com | contact@boardwalknumismatics.com | US. World coins + bullion + consignment, since 2007. |
+| Capo's Coins | caposcoins.com | 215-764-0850 | US (South Philadelphia). Family-owned 55+ years. |
+| Cal Coin and Jewelry | calcoinandjewelry.com | 760-315-3890 | US (La Mesa/San Diego, CA). Buys gold/silver/coins/watches, est. 2021. |
+| Global Bullion Suppliers | globalbullionsuppliers.com | support@globalbullionsuppliers.com | Canada (Toronto). Royal Canadian Mint gold/silver bars & coins, BBB accredited. |
+| Colonial Acres Coins | colonialacres.com | info@colonialacres.com, 1-888-255-4565 | Canada (Ontario). Dedicated "Bullion Corner" page, runs its own coin auction house. |
+| Investor Crate | investorcrate.com | investorcrate.com/pages/contact-us | US. Monthly gold/silver/platinum bullion subscription box. |
+| GoldUnion US | gold-union.com | gold-union.com/#appointment-form | US (California, French parent chain). Already has live gold/silver price chart pages. |
+| Jewelry & Coin Mart | jewelry-coin-mart.myshopify.com | 847-839-9500 | US (Schaumburg, IL). 30+ yr business, still on bare myshopify.com subdomain — no custom domain set up. |
+| Coolstax Vault (Silver Seeker) | shop.coolstax.com | site contact form | US. Silver bar/coin "stacker box" subscriptions. |
+| Coin and Jewelry Gallery | shopcoinandjewelrygallery.com | live chat only, no contact page found | US (Gainesville, FL). Dealer since 1981, in-house GIA jeweler. |
+
+**Broad-discovery pass (2026-07-24)**: 24 new leads (16 bullion/coin, 8 by-weight jewelry), zero overlap with the existing 20. Best search strategy: `"powered by shopify" + [bullion/coin term]` surfaced confirmed Shopify stores directly in search snippets; `site:myshopify.com gold bullion` was second-best. Geographic angles (UK/Australia/South Africa) mostly surfaced non-Shopify national incumbents, least productive. Excluded several strong-looking candidates for actually running WordPress/WooCommerce, not Shopify (Nashville Coin Gallery, Art in Coins, Bellingham Coin Shop, Pontevedra Coin). **Bolded stores above already run their own live spot-price ticker** — the shortest possible pitch to them is "why not let that same rate drive your actual product prices."
 
 ## Segment B: bullion, coin, precious metals dealers
 
