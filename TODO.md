@@ -117,6 +117,21 @@ Full build per explicit instruction ("no loophole and bugs which lets end user m
 
 ---
 
+## 🌱 Growth & distribution (2026-07-24) — while waiting on review
+
+Full research: [research/outreach-list-and-messages.md](research/outreach-list-and-messages.md) (48 contacts), [research/outreach-round-2-2026-07-24.md](research/outreach-round-2-2026-07-24.md) (honest, un-launched-yet templates), [research/social-distribution-channels-2026-07-24.md](research/social-distribution-channels-2026-07-24.md) (channel-by-channel breakdown).
+
+**Needs you (account/Dashboard access, can't script):**
+- [ ] Send round-2 outreach emails — timing is your call, ~1-2 weeks out per the plan. Lead with the 4 stores that already run their own live price ticker (Kzoo Bullion, Shop Global Coin, Redmond Rare Coins, Ta Jewelers) — shortest pitch.
+- [ ] Update App Store listing title/description/tags to include "Bullion Prices," "Precious Metal Price," "Spot Price" — the keyword set a direct competitor (nFusion's "Precious Metal Product Prices") already ranks on. Dev Dashboard only.
+- [ ] Post to Shopify Community Forums — Shopify's own sanctioned self-promo channel, needs your account.
+- [ ] Post to r/coins' recurring Self-Promotion Thread (when one's live) and r/SomebodyMakeThis's monthly Creator Showcase thread — both explicitly built for exactly this.
+- [ ] Request access to the "Jewelry Marketing Tips & Tricks" Facebook group (1.6K members, private) and introduce yourself before posting.
+- [ ] Indie Hackers launch post — receptive community, no prior bullion/precious-metals Shopify app launch found there (white space).
+- [ ] Instagram: post on #bullion #preciousmetals #numismatics with a before/after price-sync demo clip.
+
+**Deliberately not doing**: r/shopify, r/ecommerce, r/Gold, r/Silverbugs — all explicitly ban self-promo, engage there only by answering real questions (app in bio, never the post body).
+
 ## 🚀 SUBMITTED — under Shopify review as of 2026-07-24
 
 The app has been submitted and is now in Shopify's review queue. Everything below this point in "Path to launch" is now historical record, not a live checklist — Shopify's own submission form wouldn't have accepted the app without the required fields filled, so items previously marked "confirm?" (pricing-details field, demo store) are resolved by that fact alone.
