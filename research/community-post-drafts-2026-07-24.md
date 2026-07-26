@@ -20,6 +20,40 @@ Would genuinely love feedback from anyone who's built in this space or sells in 
 
 ---
 
+## r/ShopifyApps — App Promo (found by user 2026-07-27, best-fit channel)
+
+Better than anything the earlier research turned up: a subreddit built specifically for this, self-promotion explicitly welcome "in both the main feed and comments, as long as it adds value." One real constraint: **only 1 promo post per developer per month** — this is the one shot for the month, and posts that don't fully answer the required template get removed, so every field below is answered in full rather than left thin.
+
+Being upfront that the app isn't installable yet (still under Shopify review) since that's the honest-tone rule this whole outreach effort has followed everywhere else — "Where can I find it?" and "What are you looking for?" are where that's addressed naturally, not hidden.
+
+**Post Title**: MetalRate Sync, an app that keeps Shopify product prices synced to live gold/silver/platinum/palladium rates for bullion dealers and by-weight jewelry sellers.
+
+**What's the app?**
+MetalRate Sync automatically reprices Shopify products based on live precious-metal spot rates. You set a formula per product line (metal, purity, making charge, wastage, markup, tax), and the app keeps every tracked product's price aligned with the market — either on a schedule or on demand, with a full preview before anything actually changes.
+
+**Where can I find it?**
+Just submitted for Shopify App Store review (listing name will be "Ounce: MetalRate Sync") — not installable yet. Everything's demoed at metalratesync.com in the meantime: a walkthrough video, two raw unedited test-run recordings, and full docs/FAQ, so it can be evaluated before there's an install link to click.
+
+**What problem are you solving?**
+Bullion, coin, and by-weight jewelry sellers have to reprice their whole catalog every time the metal market moves — sometimes daily. Most either do it by hand, or use a tool that's unreliable at bulk updates. That's not hypothetical: it's a documented, current complaint on a competing app's own reviews ("customer service is horrible, never respond to anything," posted this month). The bulk-update-at-scale problem specifically is the one I built this around, not just the pricing math (every competitor already does the math fine).
+
+**How does the app work?**
+Set a pricing formula (metal, purity, making charge, wastage %, markup, tax, optional rounding/stop-loss). Assign it to a product with its weight. Preview shows exactly what every tracked product's new price would be, old vs. new vs. % change, before anything touches the store. Apply pushes it in Shopify-API-limit-safe batches with retry-on-throttle, and every run — manual or scheduled — writes a full per-variant audit log (updated/skipped/failed, and why, with the exact rate used).
+
+**Who's your target merchant?**
+Shopify stores selling bullion/coins/precious metals, or fine jewelry priced by weight (gold/silver per gram or karat) — segments where live repricing isn't optional, it's how the business works.
+
+**How is it different / better than other existing solutions?**
+Preview-before-commit (one direct competitor's own marketing site literally lists this as "Coming Soon" — it's not table stakes in this niche yet). Full per-variant audit trail on every run, not just a success/fail count. Reliable bulk CSV import built for large catalogs specifically, using Shopify's Bulk Operations API once a catalog crosses ~2,000 variants instead of just capping out. Stop-loss protection per formula. India city-rate support (Mumbai/Kolkata/Chennai/Bangalore) on every tier, not gated to a premium plan. Native Shopify billing — no separate invoice or external payment step.
+
+**How much does it cost?**
+$30/mo Starter (800 SKUs, 2x/day auto-sync) or $50/mo Pro (unlimited SKUs, up to 5x/day), both with a 14-day free trial, billed through Shopify.
+
+**What are you looking for?**
+Mainly early feedback and beta interest right now, since it's not installable yet — if this looks useful for your store or a store you know, I'd genuinely value hearing whether the above actually matches a real pain point, and I'm happy to notify anyone interested the moment it clears review.
+
+---
+
 ## r/coins — Self-Promotion Thread only (never the main feed)
 
 **Verified live 2026-07-27 against the actual current thread's AutoMod rules** (user pasted them directly). Confirmed this draft is compliant:

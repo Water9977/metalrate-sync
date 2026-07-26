@@ -125,7 +125,8 @@ Full research: [research/outreach-list-and-messages.md](research/outreach-list-a
 - [ ] Send round-2 outreach emails — timing is your call, ~1-2 weeks out per the plan. Lead with the 4 stores that already run their own live price ticker (Kzoo Bullion, Shop Global Coin, Redmond Rare Coins, Ta Jewelers) — shortest pitch.
 - [ ] Update App Store listing title/description/tags to include "Bullion Prices," "Precious Metal Price," "Spot Price" — the keyword set a direct competitor (nFusion's "Precious Metal Product Prices") already ranks on. Dev Dashboard only.
 - [ ] Post to Shopify Community Forums — Shopify's own sanctioned self-promo channel, needs your account.
-- [ ] Post to r/coins' recurring Self-Promotion Thread (when one's live) and r/SomebodyMakeThis's monthly Creator Showcase thread — both explicitly built for exactly this.
+- [ ] **Post to r/ShopifyApps** (found by user 2026-07-27, not in the original research) — subreddit built specifically for this, self-promo explicitly welcome in-feed and in comments. Full template-answered draft ready. **Only 1 promo post/month per developer allowed — make it count.**
+- [ ] Post to r/coins' recurring Self-Promotion Thread (when one's live — confirm it's the current one, they rotate) and r/SomebodyMakeThis's monthly Creator Showcase thread.
 - [ ] Request access to the "Jewelry Marketing Tips & Tricks" Facebook group (1.6K members, private) and introduce yourself before posting.
 - [ ] Indie Hackers launch post — receptive community, no prior bullion/precious-metals Shopify app launch found there (white space).
 - [ ] Instagram: post on #bullion #preciousmetals #numismatics with a before/after price-sync demo clip.
