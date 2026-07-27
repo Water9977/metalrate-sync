@@ -129,7 +129,7 @@ Full research: [research/outreach-list-and-messages.md](research/outreach-list-a
 - [ ] Post to r/coins' recurring Self-Promotion Thread (when one's live — confirm it's the current one, they rotate) and r/SomebodyMakeThis's monthly Creator Showcase thread.
 - [ ] Request access to the "Jewelry Marketing Tips & Tricks" Facebook group (1.6K members, private) and introduce yourself before posting.
 - [ ] Indie Hackers launch post — receptive community, no prior bullion/precious-metals Shopify app launch found there (white space).
-- [ ] Instagram: post on #bullion #preciousmetals #numismatics with a before/after price-sync demo clip.
+- [ ] Instagram — account created 2026-07-27. Full 8-post starter plan with real captions/assets/hashtags ready: [research/instagram-content-plan-2026-07-27.md](research/instagram-content-plan-2026-07-27.md). Only post #5 (before/after demo clip) needs new recording; the rest use existing screenshots.
 
 **Deliberately not doing**: r/shopify, r/ecommerce, r/Gold, r/Silverbugs — all explicitly ban self-promo, engage there only by answering real questions (app in bio, never the post body).
 
