@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useLoaderData, useFetcher } from "react-router";
+import { useLoaderData, useFetcher, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -13,7 +13,6 @@ import { getSettings, SCHEDULE_INTERVAL_MINUTES } from "../services/rates.server
 import {
   getBillingStatus,
   requireActivePlan,
-  planSelectionUrl,
   PLAN_LIMITS,
 } from "../services/billing.server";
 import { METAL_LABELS, SUPPORTED_METALS, INDIA_RATE_CITIES } from "../constants";
@@ -58,7 +57,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       subscriptionName: billing.subscriptionName,
       skuCap: limits?.skuCap ?? null,
       enabledCount,
-      upgradeUrl: planSelectionUrl(shop, billing.appHandle),
     },
     manualRates: Object.fromEntries(
       manualRates.map((rate) => [rate.metal, rate.pricePerGram]),
@@ -144,6 +142,7 @@ export default function Settings() {
   const fetcher = useFetcher<typeof action>();
   const manualFetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
+  const navigate = useNavigate();
   // Mirrors the provider dropdown so only the fields relevant to the chosen
   // provider are visible — the API key and city picker mean nothing on
   // manual/demo, and the manual-rates table means nothing on live API.
@@ -179,14 +178,12 @@ export default function Settings() {
                   Pro for unlimited SKUs and faster auto-sync.
                 </s-banner>
               )}
-              {plan.tier === "starter" && (
-                <s-button
-                  variant="secondary"
-                  onClick={() => window.open(plan.upgradeUrl, "_top")}
-                >
-                  Upgrade to Pro
-                </s-button>
-              )}
+              <s-button
+                variant="secondary"
+                onClick={() => navigate("/app/settings/change-plan")}
+              >
+                Change plan
+              </s-button>
             </>
           ) : (
             <s-banner tone="critical" heading="No active plan">
