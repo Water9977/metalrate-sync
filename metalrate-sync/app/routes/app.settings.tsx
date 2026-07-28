@@ -171,12 +171,23 @@ export default function Settings() {
                 . Auto-sync every{" "}
                 {describeInterval(settings.scheduleIntervalMinutes)}.
               </s-paragraph>
-              {plan.skuCap != null && plan.enabledCount >= plan.skuCap && (
-                <s-banner tone="warning" heading="SKU limit reached">
-                  You're at your plan's {plan.skuCap}-SKU limit. Upgrade to
-                  Pro for unlimited SKUs and faster auto-sync.
+              {plan.skuCap != null && plan.enabledCount > plan.skuCap && (
+                <s-banner tone="critical" heading="Over your plan's SKU limit">
+                  You have {plan.enabledCount - plan.skuCap} more SKU
+                  {plan.enabledCount - plan.skuCap === 1 ? "" : "s"} tracked
+                  than your plan allows — likely from a downgrade. The
+                  oldest-tracked variants keep syncing; the rest are paused
+                  until you upgrade or untrack some on the{" "}
+                  <s-link href="/app/products">Products page</s-link>.
                 </s-banner>
               )}
+              {plan.skuCap != null &&
+                plan.enabledCount === plan.skuCap && (
+                  <s-banner tone="warning" heading="SKU limit reached">
+                    You're at your plan's {plan.skuCap}-SKU limit. Upgrade to
+                    Pro for unlimited SKUs and faster auto-sync.
+                  </s-banner>
+                )}
               <s-button
                 variant="secondary"
                 onClick={() => {

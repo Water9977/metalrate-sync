@@ -23,11 +23,11 @@ import { requireActivePlan } from "../services/billing.server";
 import { METAL_LABELS, METAL_TONE } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   const settings = await getSettings(shop);
   try {
-    const { rows, rates } = await buildPreview(shop);
+    const { rows, rates } = await buildPreview(admin, shop);
     // P3/S1 fix (audit #2): persist what the merchant is being shown, and
     // let Apply reference it by id. The client can no longer forge prices,
     // rates, or freshness — and the Apply request stays a few bytes even
@@ -163,6 +163,7 @@ const STATUS_META: Record<
   no_change: { label: "No change", tone: "neutral" },
   stop_loss: { label: "Stop-loss hold", tone: "warning" },
   missing_data: { label: "Missing data", tone: "critical" },
+  over_plan_limit: { label: "Over plan limit", tone: "critical" },
 };
 
 export default function SyncPreview() {
@@ -184,6 +185,7 @@ export default function SyncPreview() {
   const willUpdate = rows.filter((row) => row.status === "will_update");
   const held = rows.filter((row) => row.status === "stop_loss");
   const missing = rows.filter((row) => row.status === "missing_data");
+  const overLimit = rows.filter((row) => row.status === "over_plan_limit");
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.message) {
@@ -286,6 +288,22 @@ export default function SyncPreview() {
               <s-banner tone="critical" heading={`${missing.length} variants missing data`}>
                 These variants need a weight and an active formula on the{" "}
                 <s-link href="/app/products">Products page</s-link>.
+              </s-banner>
+            </s-section>
+          )}
+          {overLimit.length > 0 && (
+            <s-section>
+              <s-banner
+                tone="critical"
+                heading={`${overLimit.length} variants over your plan's SKU limit`}
+              >
+                Your plan changed since these were tracked, so they're paused
+                and won't sync — the oldest-tracked variants keep syncing
+                first. Upgrade in{" "}
+                <s-link href="/app/settings">Settings</s-link>, or untrack some
+                variants on the{" "}
+                <s-link href="/app/products">Products page</s-link> to bring
+                the rest back under the limit.
               </s-banner>
             </s-section>
           )}

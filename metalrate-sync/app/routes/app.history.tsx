@@ -81,6 +81,7 @@ const ITEM_TONE: Record<string, "success" | "warning" | "critical" | "neutral"> 
   updated: "success",
   skipped_stop_loss: "warning",
   skipped_missing_data: "neutral",
+  skipped_plan_limit: "warning",
   failed: "critical",
   pending: "neutral",
 };

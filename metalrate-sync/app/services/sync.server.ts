@@ -1,6 +1,7 @@
 import prisma from "../db.server";
 import { computePrice, isChangeBelowThreshold } from "./pricing.server";
 import { getRates, type MetalRate } from "./rates.server";
+import { getBillingStatus, PLAN_LIMITS } from "./billing.server";
 
 /**
  * The core of MetalRate Sync. Reliability at 10k+ SKU scale is the product's
@@ -22,7 +23,12 @@ export interface PreviewRow {
   oldPrice: number | null;
   newPrice: number | null;
   changePct: number | null;
-  status: "will_update" | "no_change" | "stop_loss" | "missing_data";
+  status:
+    | "will_update"
+    | "no_change"
+    | "stop_loss"
+    | "missing_data"
+    | "over_plan_limit";
   formulaName: string;
 }
 
@@ -33,7 +39,10 @@ interface AdminClient {
   ) => Promise<Response>;
 }
 
-export async function buildPreview(shop: string): Promise<{
+export async function buildPreview(
+  admin: AdminClient,
+  shop: string,
+): Promise<{
   rows: PreviewRow[];
   rates: MetalRate[];
 }> {
@@ -46,7 +55,44 @@ export async function buildPreview(shop: string): Promise<{
     orderBy: [{ productTitle: "asc" }, { variantTitle: "asc" }],
   });
 
+  // Plan downgrades can leave a shop with MORE enabled SKUs than its new
+  // tier allows (the enable-time cap in app.products.tsx/import.server.ts
+  // only ever blocks NEW enables -- it does nothing about SKUs that were
+  // already enabled under a higher tier before the downgrade). Without this,
+  // a shop could go Pro -> Starter with 1,500 SKUs enabled and keep syncing
+  // all 1,500 forever on the Starter price -- exactly the kind of loophole
+  // this build is supposed to close. Enforce the live cap here too, since
+  // every sync (manual preview AND scheduled) funnels through this function.
+  // Whichever SKUs were enabled FIRST (oldest createdAt) keep syncing --
+  // first-come-first-served is the least surprising rule for a merchant who
+  // suddenly has more tracked products than their plan allows.
+  const billing = await getBillingStatus(admin);
+  const cap = billing.tier ? PLAN_LIMITS[billing.tier].skuCap : 0;
+  const allowedVariantIds =
+    cap == null
+      ? null // unlimited (Pro) -- no exclusion set needed
+      : new Set(
+          [...configs]
+            .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+            .slice(0, cap)
+            .map((c) => c.variantId),
+        );
+
   const rows: PreviewRow[] = configs.map((config) => {
+    if (allowedVariantIds && !allowedVariantIds.has(config.variantId)) {
+      return {
+        variantId: config.variantId,
+        productId: config.productId,
+        title: `${config.productTitle} — ${config.variantTitle}`.trim(),
+        sku: config.sku,
+        oldPrice: config.lastPrice,
+        newPrice: null,
+        changePct: null,
+        status: "over_plan_limit",
+        formulaName: config.formula?.name ?? "(none)",
+      };
+    }
+
     if (!config.formula || !config.formula.active || config.weightGrams <= 0) {
       return {
         variantId: config.variantId,
@@ -147,7 +193,7 @@ export async function executeSync(
   shop: string,
   trigger: "manual" | "scheduled" = "manual",
 ): Promise<number> {
-  const { rows, rates } = await buildPreview(shop);
+  const { rows, rates } = await buildPreview(admin, shop);
   return runBatchedApply(admin, shop, trigger, rows, rates);
 }
 
@@ -210,7 +256,9 @@ async function runBatchedApply(
                 ? "pending"
                 : row.status === "stop_loss"
                   ? "skipped_stop_loss"
-                  : "skipped_missing_data",
+                  : row.status === "over_plan_limit"
+                    ? "skipped_plan_limit"
+                    : "skipped_missing_data",
           })),
       },
     },
