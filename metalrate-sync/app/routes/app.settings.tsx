@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useLoaderData, useFetcher, useNavigate } from "react-router";
+import { useLoaderData, useFetcher } from "react-router";
 import { useEffect, useState } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -142,7 +142,6 @@ export default function Settings() {
   const fetcher = useFetcher<typeof action>();
   const manualFetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
-  const navigate = useNavigate();
   // Mirrors the provider dropdown so only the fields relevant to the chosen
   // provider are visible — the API key and city picker mean nothing on
   // manual/demo, and the manual-rates table means nothing on live API.
@@ -180,7 +179,18 @@ export default function Settings() {
               )}
               <s-button
                 variant="secondary"
-                onClick={() => navigate("/app/settings/change-plan")}
+                onClick={() => {
+                  // NOT useNavigate() -- that does a client-side JS fetch for
+                  // this route's loader data, and this loader's job is to
+                  // issue an iframe-escaping redirect(), which (per the ONLY
+                  // proven-working case, app.tsx's layout loader) has only
+                  // ever actually been triggered by a genuine full page
+                  // navigation, never a nested SPA data-fetch. That mismatch
+                  // is what produced the 401 seen live 2026-07-27 testing
+                  // this. A real browser navigation carries proper session
+                  // context the same way any other full page load does.
+                  window.location.assign("/app/settings/change-plan");
+                }}
               >
                 Change plan
               </s-button>
