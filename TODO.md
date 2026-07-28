@@ -155,10 +155,10 @@ The app has been submitted and is now in Shopify's review queue. Everything belo
 
 Note this also means Shopify's own documented pattern for this ([redirect-plan-selection-page](https://shopify.dev/docs/apps/launch/billing/shopify-app-pricing/redirect-plan-selection-page), which prescribes exactly `redirect(url, {target:"_top"})`) is the thing that's broken — following the docs literally is what produced four failed fixes. Worth remembering for any *other* place this app needs to send a merchant out to the Shopify admin: prefer a real `target="_top"` link over a loader redirect. The one existing loader redirect that does still use this pattern is `app.tsx`'s no-active-plan gate — it has always worked in practice, but it's the same racy mechanism underneath, so if a merchant ever reports a blank screen on first install, that's the first place to look.
 
-**⚠️ Not yet confirmed working live — this is NOT a closed item.** Five attempts now shipped for this exact button. Don't mark it resolved in the Dashboard until you've personally **single-clicked** it several times in a normal browser window and it lands on Shopify's plan page every single time. A fix that only works on the second or third click is the exact bug that's been chased this whole time, not a success.
+**✅ Confirmed working live 2026-07-28** — user single-clicked it, landed cleanly, "works smooth now." Five attempts total, but this is the actual close.
 
 **What you need to do:**
-- [ ] Click through "Change plan" in the real admin — should land cleanly on Shopify's hosted plan-selection page now, not 401/blank. Test from both a Starter and a Pro state if you can.
+- [x] Click through "Change plan" in the real admin — confirmed 2026-07-28, lands cleanly on Shopify's hosted plan-selection page, single click, no blank/401.
 - [ ] Record a short screen capture (Loom or similar) of that working — this is your "Proof of resolution" for the Dashboard's response form.
 - [ ] In the Partner Dashboard's review-response screen: pick "Show resolved state," paste the recording URL into "Proof of resolution," click **Mark resolved**.
 - [ ] Resubmit for review.
