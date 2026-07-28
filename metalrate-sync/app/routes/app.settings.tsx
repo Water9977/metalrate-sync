@@ -12,6 +12,7 @@ import prisma from "../db.server";
 import { getSettings, SCHEDULE_INTERVAL_MINUTES } from "../services/rates.server";
 import {
   getBillingStatus,
+  planSelectionUrl,
   requireActivePlan,
   PLAN_LIMITS,
 } from "../services/billing.server";
@@ -57,6 +58,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       subscriptionName: billing.subscriptionName,
       skuCap: limits?.skuCap ?? null,
       enabledCount,
+      // Empty appHandle would build .../charges//pricing_plans, which 404s
+      // as a blank page -- the exact failure mode this button has already
+      // shipped four bad fixes for. Render a support message instead.
+      changePlanUrl: billing.appHandle
+        ? planSelectionUrl(shop, billing.appHandle)
+        : null,
     },
     manualRates: Object.fromEntries(
       manualRates.map((rate) => [rate.metal, rate.pricePerGram]),
@@ -188,40 +195,40 @@ export default function Settings() {
                     Pro for unlimited SKUs and faster auto-sync.
                   </s-banner>
                 )}
-              <s-button
-                variant="secondary"
-                onClick={() => {
-                  // NOT useNavigate() -- that does a client-side JS fetch for
-                  // this route's loader data, and this loader's job is to
-                  // issue an iframe-escaping redirect(), which (per the ONLY
-                  // proven-working case, app.tsx's layout loader) has only
-                  // ever actually been triggered by a genuine full page
-                  // navigation, never a nested SPA data-fetch. That mismatch
-                  // is what produced the 401 seen live 2026-07-27 testing
-                  // this. A real browser navigation carries proper session
-                  // context the same way any other full page load does.
-                  //
-                  // Blank-page fix (2026-07-28, root-caused by reading the
-                  // actual @shopify/shopify-app-react-router source, not
-                  // guessed): a bare path here strips the current page's
-                  // query string, so the request that hits the loader has
-                  // no `embedded=1`. The framework's redirect() only uses
-                  // its real iframe-escaping mechanism (an App Bridge
-                  // bounce page that does `window.open(url, "_top")`) when
-                  // it detects an embedded or data request -- otherwise it
-                  // falls back to a plain HTTP redirect, which lands INSIDE
-                  // our own iframe and tries to load admin.shopify.com
-                  // there, which the browser refuses to render (blank).
-                  // Forwarding the current search params (embedded=1, shop,
-                  // host, etc.) is what makes the loader detect this
-                  // correctly, same as every normal embedded page load.
-                  window.location.assign(
-                    `/app/settings/change-plan${window.location.search}`,
-                  );
-                }}
-              >
-                Change plan
-              </s-button>
+              {/*
+                A plain link, not a JS navigation and not a server redirect.
+                Four earlier fixes failed because they all routed through the
+                framework's redirect(target:"_top"), which works by throwing
+                an HTML bounce page whose inline `window.open(url,"_top")`
+                only escapes the iframe if App Bridge has already patched
+                window.open by the time that script runs. It often hasn't --
+                a documented, still-open framework race ("the app bridge is
+                not properly configuring the window object prior to the
+                script redirection", community.shopify.dev/t/21332, reported
+                in both Safari and Chrome, specifically for managed-pricing
+                URLs). Losing that race means a raw cross-origin top
+                navigation, which the browser blocks as unsafe -> blank page.
+                It explains the symptom exactly: double/triple-clicking
+                "worked" because a warmed App Bridge won the race on a later
+                try. An <a target="_top"> sidesteps all of it -- top-level
+                navigation from a real user click is browser-native and
+                needs no App Bridge patching, no bounce page, and no server
+                round-trip.
+              */}
+              {plan.changePlanUrl ? (
+                <s-button
+                  variant="secondary"
+                  href={plan.changePlanUrl}
+                  target="_top"
+                >
+                  Change plan
+                </s-button>
+              ) : (
+                <s-banner tone="warning" heading="Can't open plan settings">
+                  Something's wrong with this app's billing configuration.
+                  Email metalratesync@gmail.com and we'll sort it out.
+                </s-banner>
+              )}
             </>
           ) : (
             <s-banner tone="critical" heading="No active plan">
