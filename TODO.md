@@ -137,9 +137,23 @@ Full research: [research/outreach-list-and-messages.md](research/outreach-list-a
 
 The app has been submitted and is now in Shopify's review queue. Everything below this point in "Path to launch" is now historical record, not a live checklist — Shopify's own submission form wouldn't have accepted the app without the required fields filled, so items previously marked "confirm?" (pricing-details field, demo store) are resolved by that fact alone.
 
+### Review bounce #1 (2026-07-27) — FIXED, deployed, awaiting your confirmation + resubmit
+
+**Flagged**: 1.2.3 "Allow pricing plan changes" — merchants must be able to upgrade/downgrade without contacting support or reinstalling. Reviewer's screencast showed the Settings page's "Upgrade to Pro" button rendering a blank screen/error instead of navigating to Shopify's plan-selection page.
+
+**Root cause**: our billing verification (2026-07-24) only ever tested the automatic "no active plan → redirect" flow (`app.tsx`'s layout loader). Changing an *already-active* plan is a genuinely different flow — a merchant clicking a button inside the app — and that button used a raw client-side `window.open(url, "_top")` instead of the framework's proven iframe-safe `redirect()`. An untested path, not a regression of something that worked before.
+
+**Fixed** (see [architecture.md](architecture.md) for the full writeup): added [app.settings_.change-plan.tsx](metalrate-sync/app/routes/app.settings_.change-plan.tsx), a resource route that reuses the *exact* redirect() mechanism already proven live, so both flows are now the same proven code path. Also fixed a second real gap found while in there: there was no downgrade path at all — Settings now shows one "Change plan" button for every tier instead of an upgrade-only button that only appeared for Starter. **Deployed and confirmed live 2026-07-27** (`HTTP 200`, boots clean).
+
+**What you need to do:**
+- [ ] Click through it yourself in the real admin: Settings → "Change plan" → should land cleanly on Shopify's hosted plan-selection page now, not blank/error. Test from both a Starter and a Pro state if you can.
+- [ ] Record a short screen capture (Loom or similar) of that working — this is your "Proof of resolution" for the Dashboard's response form.
+- [ ] In the Partner Dashboard's review-response screen: pick "Show resolved state," paste the recording URL into "Proof of resolution," click **Mark resolved**.
+- [ ] Resubmit for review.
+
 **What's actually left now:**
-- [ ] **Wait for Shopify's review decision.** No fixed timeline (see architecture.md's "Timeline" note) — could be days to a few weeks, possibly with back-and-forth if something needs fixing.
-- [ ] **If bounced back**: fix whatever's flagged, re-submit. Common causes per Shopify's own docs: listing content issues, functional bugs found live, policy questions. Nothing currently known to be wrong — B1-B3 were fixed and deployed before submission.
+- [ ] **Wait for Shopify's review decision** on the resubmission. No fixed timeline — could be days to a few weeks, possibly more back-and-forth.
+- [ ] **If bounced again**: fix whatever's flagged, same loop as above.
 - [ ] **Once approved**: Chris (and anyone else) installs via the normal 14-day trial — see "Chris" section below, no private plan.
 - [ ] Optional cleanup, not submission-blocking: split dev/prod DB, credential rotation follow-through if anything new gets exposed, the deferred Prisma major-version bump, L1 (Float→Decimal).
 
