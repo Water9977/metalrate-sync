@@ -25,11 +25,21 @@ import { getBillingStatus, planSelectionUrl } from "../services/billing.server";
  * direction. Settings now shows one "Change plan" button regardless of
  * tier instead of an upgrade-only button that only ever appeared for
  * Starter shops.
+ *
+ * Cache-Control fix (2026-07-29): merchant reported a blank page on
+ * repeat visits, worked fine in incognito -- classic stale-cache
+ * symptom. This loader's redirect target depends on live billing
+ * status (GraphQL call above), so a cached response here can send a
+ * merchant to a stale destination or replay a broken response from a
+ * prior deploy. No-store forces the browser to hit the server fresh
+ * every time.
  */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session, redirect } = await authenticate.admin(request);
   const billing = await getBillingStatus(admin);
-  return redirect(planSelectionUrl(session.shop, billing.appHandle), {
+  const response = redirect(planSelectionUrl(session.shop, billing.appHandle), {
     target: "_top",
   });
+  response.headers.set("Cache-Control", "no-store, must-revalidate");
+  return response;
 };
