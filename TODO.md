@@ -137,16 +137,20 @@ Full research: [research/outreach-list-and-messages.md](research/outreach-list-a
 
 The app has been submitted and is now in Shopify's review queue. Everything below this point in "Path to launch" is now historical record, not a live checklist — Shopify's own submission form wouldn't have accepted the app without the required fields filled, so items previously marked "confirm?" (pricing-details field, demo store) are resolved by that fact alone.
 
-### Review bounce #1 (2026-07-27) — FIXED, deployed, awaiting your confirmation + resubmit
+### Review bounce #1 (2026-07-27) — 2 fixes deployed, live confirmation still pending
 
 **Flagged**: 1.2.3 "Allow pricing plan changes" — merchants must be able to upgrade/downgrade without contacting support or reinstalling. Reviewer's screencast showed the Settings page's "Upgrade to Pro" button rendering a blank screen/error instead of navigating to Shopify's plan-selection page.
 
-**Root cause**: our billing verification (2026-07-24) only ever tested the automatic "no active plan → redirect" flow (`app.tsx`'s layout loader). Changing an *already-active* plan is a genuinely different flow — a merchant clicking a button inside the app — and that button used a raw client-side `window.open(url, "_top")` instead of the framework's proven iframe-safe `redirect()`. An untested path, not a regression of something that worked before.
+**Attempt 1 — root cause**: our billing verification (2026-07-24) only ever tested the automatic "no active plan → redirect" flow (`app.tsx`'s layout loader). Changing an *already-active* plan is a genuinely different flow — a merchant clicking a button inside the app — and that button used a raw client-side `window.open(url, "_top")` instead of the framework's proven iframe-safe `redirect()`. Fixed by adding [app.settings_.change-plan.tsx](metalrate-sync/app/routes/app.settings_.change-plan.tsx), a resource route reusing that same proven redirect. Also closed the missing-downgrade gap: one "Change plan" button for every tier now, not an upgrade-only button. Deployed.
 
-**Fixed** (see [architecture.md](architecture.md) for the full writeup): added [app.settings_.change-plan.tsx](metalrate-sync/app/routes/app.settings_.change-plan.tsx), a resource route that reuses the *exact* redirect() mechanism already proven live, so both flows are now the same proven code path. Also fixed a second real gap found while in there: there was no downgrade path at all — Settings now shows one "Change plan" button for every tier instead of an upgrade-only button that only appeared for Starter. **Deployed and confirmed live 2026-07-27** (`HTTP 200`, boots clean).
+**Attempt 2 — user live-tested attempt 1 immediately, hit a NEW bug**: clicking "Change plan" produced `401 Unauthorized`. Root cause: the button used `useNavigate()`, which does a client-side JS *data-fetch* for the route's loader — but that loader's whole job is issuing an iframe-escaping redirect(), and (per the only previously-proven case) that's only ever actually run via a genuine full page navigation, never a nested SPA fetch. Fixed by switching to `window.location.assign()`, forcing a real navigation. Deployed 2026-07-27.
+
+**⚠️ Not yet confirmed working live — this is NOT a closed item.** Two attempts already shipped for this exact button; don't mark it resolved in the Dashboard until you've personally clicked it and confirmed it lands cleanly on Shopify's hosted plan page.
+
+**Also found while re-auditing (user asked directly, not something I'd have caught otherwise)**: a Pro merchant with >800 enabled SKUs downgrading to Starter kept ALL of them syncing forever — the SKU cap was only ever enforced when *enabling new* SKUs, never retroactively after a downgrade. **Fixed and verified with a real DB test** (seeded 801 SKUs on a Starter-tier shop, confirmed exactly 1 gets excluded and it's the correct oldest-first-wins one) — see `sync.server.ts`'s `buildPreview`. Deployed 2026-07-27, confirmed `HTTP 200` live.
 
 **What you need to do:**
-- [ ] Click through it yourself in the real admin: Settings → "Change plan" → should land cleanly on Shopify's hosted plan-selection page now, not blank/error. Test from both a Starter and a Pro state if you can.
+- [ ] Click through "Change plan" in the real admin — should land cleanly on Shopify's hosted plan-selection page now, not 401/blank. Test from both a Starter and a Pro state if you can.
 - [ ] Record a short screen capture (Loom or similar) of that working — this is your "Proof of resolution" for the Dashboard's response form.
 - [ ] In the Partner Dashboard's review-response screen: pick "Show resolved state," paste the recording URL into "Proof of resolution," click **Mark resolved**.
 - [ ] Resubmit for review.
