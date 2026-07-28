@@ -200,7 +200,24 @@ export default function Settings() {
                   // is what produced the 401 seen live 2026-07-27 testing
                   // this. A real browser navigation carries proper session
                   // context the same way any other full page load does.
-                  window.location.assign("/app/settings/change-plan");
+                  //
+                  // Blank-page fix (2026-07-28, root-caused by reading the
+                  // actual @shopify/shopify-app-react-router source, not
+                  // guessed): a bare path here strips the current page's
+                  // query string, so the request that hits the loader has
+                  // no `embedded=1`. The framework's redirect() only uses
+                  // its real iframe-escaping mechanism (an App Bridge
+                  // bounce page that does `window.open(url, "_top")`) when
+                  // it detects an embedded or data request -- otherwise it
+                  // falls back to a plain HTTP redirect, which lands INSIDE
+                  // our own iframe and tries to load admin.shopify.com
+                  // there, which the browser refuses to render (blank).
+                  // Forwarding the current search params (embedded=1, shop,
+                  // host, etc.) is what makes the loader detect this
+                  // correctly, same as every normal embedded page load.
+                  window.location.assign(
+                    `/app/settings/change-plan${window.location.search}`,
+                  );
                 }}
               >
                 Change plan
