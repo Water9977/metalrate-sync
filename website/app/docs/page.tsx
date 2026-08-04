@@ -7,7 +7,7 @@ const CONTACT_EMAIL = "metalratesync@gmail.com";
 export const metadata: Metadata = {
   title: "Documentation & guide",
   description:
-    "How MetalRate Sync works, end to end: formulas, weight units, rate sources, bulk import, automatic sync, plans, and answers to the questions metal sellers actually ask.",
+    "Formulas, weight units, rate sources, bulk import, automatic sync, plans and FAQs for bullion and by-weight jewelry sellers on Shopify.",
   alternates: { canonical: "/docs" },
   openGraph: {
     title: "MetalRate Sync — Documentation & guide",
@@ -87,9 +87,23 @@ const FAQS = [
   },
 ];
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
 export default function Docs() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
           <Link href="/" className="nav-logo">

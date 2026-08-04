@@ -200,6 +200,57 @@ interface TickerProps {
   fetchedAt: Date | null;
 }
 
+// Real oEmbed metadata (title, thumbnail, provider) fetched directly from
+// YouTube/Loom for the three videos below — nothing here is invented, so if
+// a video is ever swapped out this schema will silently go stale until
+// someone re-fetches it. Deliberately no uploadDate: Google's oEmbed
+// responses don't include it and we don't have a paid Data API key to look
+// it up for real, so we omit the field rather than fabricate a date.
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const videoJsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: "Showcasing Metal Rate Sync",
+    description:
+      "From formula to a live price change: set a pricing formula, assign it to a product, preview the diff against a live rate, then apply it and watch the price actually update in the store.",
+    thumbnailUrl: "https://i.ytimg.com/vi/IgCd8v6jm5k/hqdefault.jpg",
+    embedUrl: `https://www.youtube-nocookie.com/embed/${WALKTHROUGH_YOUTUBE_ID}`,
+    publisher: { "@type": "Organization", name: "MetalRate Sync" },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: "Metal Rate Sync Testing 1",
+    description: "Live test, part 1 — formulas & product setup.",
+    thumbnailUrl:
+      "https://cdn.loom.com/sessions/thumbnails/bcb859e66b9e4b7aa8ed44bf4591608b-50122224de6ee74e.gif",
+    embedUrl: "https://www.loom.com/embed/bcb859e66b9e4b7aa8ed44bf4591608b",
+    duration: "PT2M6S",
+    publisher: { "@type": "Organization", name: "MetalRate Sync" },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: "Metal Rate Sync Testing 2",
+    description: "Live test, part 2 — preview, sync & history.",
+    thumbnailUrl:
+      "https://cdn.loom.com/sessions/thumbnails/d41444a3f9734e62b91e0a6bc041f80a-d8108fbd87449b60.gif",
+    embedUrl: "https://www.loom.com/embed/d41444a3f9734e62b91e0a6bc041f80a",
+    duration: "PT1M25S",
+    publisher: { "@type": "Organization", name: "MetalRate Sync" },
+  },
+];
+
 export default async function Home() {
   const live = await getLiveRates();
   const ticks = live?.ticks ?? FALLBACK_TICKS;
@@ -208,6 +259,17 @@ export default async function Home() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      {videoJsonLd.map((v) => (
+        <script
+          key={v.name}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(v) }}
+        />
+      ))}
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
           <Link href="/" className="nav-logo">
@@ -242,7 +304,8 @@ export default async function Home() {
             </div>
             <div className="hero-copy">
               <p className="eyebrow">
-                Shopify app · bullion &amp; by-weight jewelry
+                Shopify gold &amp; silver price sync · bullion &amp; by-weight
+                jewelry
               </p>
               <h1>
                 Spot moves. Your store <em>follows.</em>

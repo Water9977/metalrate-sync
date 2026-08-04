@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     template: "%s — MetalRate Sync",
   },
   description:
-    "MetalRate Sync reprices your Shopify catalog from live gold, silver, platinum and palladium rates — with a preview before anything changes and a full audit trail of every sync.",
+    "MetalRate Sync reprices your Shopify catalog from live gold, silver, platinum and palladium rates, with a full preview and audit trail before every change.",
   keywords: [
     "shopify gold price app",
     "live metal rates shopify",
