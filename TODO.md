@@ -133,6 +133,36 @@ Full research: [research/outreach-list-and-messages.md](research/outreach-list-a
 
 **Deliberately not doing**: r/shopify, r/ecommerce, r/Gold, r/Silverbugs — all explicitly ban self-promo, engage there only by answering real questions (app in bio, never the post body).
 
+## 🔴 REVIEW BOUNCE #2 (2026-08-04) + full code audit — OPEN, app status "Paused"
+
+Shopify paused the submission and flagged 2 items. A full audit run the same day found **4 more real bugs they haven't flagged yet**, one of which is a hard App Store blocker. Nothing below is fixed unless explicitly marked.
+
+**Shopify's own findings:**
+
+- [x] **R1 — 2.1.1: India city rates threw an error.** Root cause proven by calling the live API directly: `XAU-MUMB` returns `{"success":false,"error":{"statusCode":416,"message":"XAU-MUMB query requires a paid plan."}}`. The `METALPRICEAPI_KEY` on Railway is a **free-tier key**; city symbols need a paid plan. [constants.ts](metalrate-sync/app/constants.ts) even documented this requirement — it shipped anyway. **FIXED 2026-08-04 by removing the India-city feature entirely** (user's call: "that was just an extra feature not needed at all") — dropped from `constants.ts`, `rates.server.ts`, Settings UI, and both website pages. Global rates in any currency (incl. INR) still work fine.
+- [ ] **R2 — 1.2.3: downgrading to a free plan locks the merchant out.** [billing.server.ts](metalrate-sync/app/services/billing.server.ts)'s `PLAN_NAME_TO_TIER` only maps `starter` and `pro`. Any *other* active plan name resolves to `tier: null`, which makes [app.tsx:22](metalrate-sync/app/routes/app.tsx:22) redirect straight back to the plan-selection page — an infinite bounce. The "200 message" the reviewer saw is our App Bridge bounce page (a 200 HTML response whose body is just a `<script>` tag, so it renders blank). **Note: Shopify auto-provisions a $0 private test plan for reviewers**, so this fires during every review regardless of what public plans exist. Fix must be "any ACTIVE subscription grants access, unknown name falls back to a safe default tier" — never lock out on an unrecognized name.
+
+**Found by audit, NOT yet flagged by Shopify (but will be):**
+
+- [ ] **R3 — compliance + uninstall webhooks return HTTP 500 for uninstalled shops. Hard App Store blocker.** Mandatory GDPR webhooks must return 2xx; yours failed `shop/redact` **9 consecutive times** for the review store (Partner dashboard, Jul 29 14:30→18:30), matched 1:1 by `POST /webhooks/compliance 500` + `POST /webhooks/app/uninstalled 500` in Railway logs. Root cause traced through framework source and **confirmed exactly**: [shopify.server.ts](metalrate-sync/app/shopify.server.ts) sets `future: { expiringOfflineAccessTokens: true }`. On every webhook, `authenticate.webhook()` → `ensureValidOfflineSession` → sees a still-stored session whose token is expired → calls `refreshToken()` → the shop has already uninstalled so Shopify rejects the refresh → `refresh-token.js` does a literal `throw new Response(undefined, {status: 500})`. Our handler code never runs at all. Self-perpetuating: the session row is only deleted *inside* the handler, so it fails forever on every retry.
+- [ ] **R4 — `/app/history?run=<non-numeric>` returns a 500.** [app.history.tsx:23](metalrate-sync/app/routes/app.history.tsx:23) does `id: Number(selectedRunId)` with no validation; `Number("abc")` → `NaN` → Prisma validation error → error page. Reviewer-reachable by editing the URL or following a stale link.
+- [ ] **R5 — `/app/products` save can 500. Confirmed live in prod.** [app.products.tsx:115](metalrate-sync/app/routes/app.products.tsx:115): `Number(formulaIdRaw)` yields `NaN` for junk input, and `NaN != null` is `true`, so it enters the branch and queries `where: { id: NaN }`. Prisma drops the key and throws ``Argument `id` is missing``. Real occurrence in Railway logs on review store `bvkxxq-cv.myshopify.com`, 2026-08-03: `POST /app/products.data 500`.
+- [ ] **R6 — formula delete has the same NaN hole.** [app.formulas.tsx:46](metalrate-sync/app/routes/app.formulas.tsx:46) — `Number(form.get("id"))` unvalidated into `deleteMany`.
+
+**Lower severity, same audit:**
+
+- [ ] **R7 — silent duplicate formulas.** [app.formulas.tsx:53](metalrate-sync/app/routes/app.formulas.tsx:53): a `NaN` id makes `if (id)` falsy, so an *edit* silently becomes a *create*. No error, merchant just gets a duplicate.
+- [ ] **R8 — `metal` is never validated on formula save.** [app.formulas.tsx:71](metalrate-sync/app/routes/app.formulas.tsx:71) stores whatever string arrives. An unsupported value makes every variant on that formula permanently `missing_data` with no explanation anywhere in the UI.
+- [ ] **R9 — orphaned DB column.** `rateCity` in [schema.prisma:40](metalrate-sync/prisma/schema.prisma:40) is now unused after the R1 removal. Deliberately NOT dropped mid-review (a migration against prod is unnecessary risk right now). Drop it in the same pass as the Prisma 6→7 upgrade.
+- [ ] **R10 — scheduler burns 5 ticks on dead shops.** `runScheduledSync`'s `unauthenticated.admin(shop)` hits the identical refresh-token throw as R3. The try/catch contains it, so it degrades to 5 wasted attempts before the breaker trips rather than crashing — real but minor, and largely moot once R3 is fixed.
+
+**Previously-fixed items re-verified in this audit — all still correct in code:**
+- Change plan button (review bounce #1): fixed after 5 attempts, confirmed working live 2026-07-28. Still correct.
+- SKU cap on downgrade: `buildPreview` still enforces the live cap with oldest-first retention. Still correct.
+- Compliance webhook *payload* handling (P4): still wipes PreviewSnapshot/BulkCatalogJob/Session. The handler is right — R3 is that it never gets to run.
+
+**Also in Shopify's mail (not code):** 4.5.4/4.5.5 — test credentials must be included and valid. No login exists in this app, but the reviewer instructions must say so explicitly rather than leaving the field empty.
+
 ## 🚀 SUBMITTED — under Shopify review as of 2026-07-24
 
 The app has been submitted and is now in Shopify's review queue. Everything below this point in "Path to launch" is now historical record, not a live checklist — Shopify's own submission form wouldn't have accepted the app without the required fields filled, so items previously marked "confirm?" (pricing-details field, demo store) are resolved by that fact alone.

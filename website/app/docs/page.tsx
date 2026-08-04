@@ -70,8 +70,8 @@ const FAQS = [
     a: "No. The app requests exactly one permission: writing product prices. It stores your pricing configuration and sync history — no customer names, addresses, orders or payment data, ever.",
   },
   {
-    q: "Do you support India city rates?",
-    a: "Yes, on both Starter and Pro. When you use live rates you can pick a city-specific gold/silver rate for Mumbai, Kolkata, Chennai or Bangalore instead of the global spot price. Platinum and palladium always use the global rate — no city-level data exists for those two metals anywhere.",
+    q: "Can I price in Indian rupees?",
+    a: "Yes. Set your base currency to INR in Settings and live rates are converted for you, so a store selling in rupees prices in rupees. The app works the same way for any currency your store already sells in.",
   },
   {
     q: "Does it round prices to clean numbers?",
@@ -261,14 +261,6 @@ export default function Docs() {
                   real store.
                 </li>
               </ul>
-              <p>
-                <strong>India city rates</strong> (available on both Starter and
-                Pro): when using live rates you can choose a city-specific
-                gold/silver rate for <strong>Mumbai, Kolkata, Chennai</strong>{" "}
-                or <strong>Bangalore</strong> instead of the global spot price.
-                Platinum and palladium always use the global rate — no
-                city-level data exists for those metals.
-              </p>
             </section>
 
             <section id="preview-sync">
@@ -378,11 +370,6 @@ export default function Docs() {
                     </tr>
                     <tr>
                       <td>Formulas, stop-loss, rounding</td>
-                      <td>Included</td>
-                      <td>Included</td>
-                    </tr>
-                    <tr>
-                      <td>India city rates</td>
                       <td>Included</td>
                       <td>Included</td>
                     </tr>

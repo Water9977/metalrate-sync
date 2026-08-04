@@ -47,32 +47,6 @@ export function gramsPerUnit(code: string): number {
   return WEIGHT_UNITS.find((unit) => unit.code === code)?.gramsPerUnit ?? 1;
 }
 
-/**
- * India city-specific gold/silver rate symbols confirmed live against
- * MetalPriceAPI's own /v1/symbols endpoint (2026-07-18) — e.g. "XAU-MUMB"
- * for Mumbai gold. Requires a paid MetalPriceAPI plan (free tier returns
- * "requires a paid plan" for these).
- *
- * Deliberately trimmed to 4 major metros, and only ones with BOTH gold and
- * silver data (the API's own full list has 34 gold-only cities down to
- * tier-2 towns — not worth surfacing to a merchant). Platinum/palladium
- * have zero city-level data anywhere in the world, for any provider — that
- * is a structural fact about how those metals trade (arbitrage-free global
- * commodities), not a gap in this API. Gold+silver is the maximum any city
- * anywhere can offer, full stop.
- */
-export interface RateCity {
-  code: string;
-  label: string;
-  hasSilver: boolean;
-}
-export const INDIA_RATE_CITIES: RateCity[] = [
-  { code: "MUMB", label: "Mumbai", hasSilver: true },
-  { code: "KOLK", label: "Kolkata", hasSilver: true },
-  { code: "CHEN", label: "Chennai", hasSilver: true },
-  { code: "BANG", label: "Bangalore", hasSilver: true },
-];
-
 /** Common karat/fineness presets surfaced in the formula builder UI. */
 export const PURITY_PRESETS = [
   { label: "24K / Fine (0.999)", value: 0.999 },

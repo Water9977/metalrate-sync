@@ -152,8 +152,8 @@ const FAQS = [
     a: "Starter tracks up to 800 SKUs, Pro is unlimited. Bulk import automatically switches to Shopify's Bulk Operations API for large catalogs, so a thousand-plus-SKU store is read reliably instead of timing out.",
   },
   {
-    q: "Do you support India city rates?",
-    a: "Yes, on both Starter and Pro — pick Mumbai, Kolkata, Chennai or Bangalore for a city-specific gold/silver rate instead of the global spot price. Platinum and palladium always use the global rate; no city-level data exists for those two metals anywhere.",
+    q: "Can I price in Indian rupees?",
+    a: "Yes. Set your base currency to INR in Settings and live rates are converted for you, so a store selling in rupees prices in rupees. Same for any other currency your store already sells in.",
   },
   {
     q: "Does the app read my customers' data?",

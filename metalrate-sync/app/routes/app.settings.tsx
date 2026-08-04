@@ -16,7 +16,7 @@ import {
   requireActivePlan,
   PLAN_LIMITS,
 } from "../services/billing.server";
-import { METAL_LABELS, SUPPORTED_METALS, INDIA_RATE_CITIES } from "../constants";
+import { METAL_LABELS, SUPPORTED_METALS } from "../constants";
 
 function describeInterval(minutes: number): string {
   if (minutes % 1440 === 0) {
@@ -46,7 +46,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     settings: {
       rateProvider: settings.rateProvider,
       liveRatesAvailable: Boolean(process.env.METALPRICEAPI_KEY),
-      rateCity: settings.rateCity ?? "",
       baseCurrency: settings.baseCurrency,
       scheduleEnabled: settings.scheduleEnabled,
       scheduleIntervalMinutes: limits?.scheduleIntervalMinutes ?? SCHEDULE_INTERVAL_MINUTES,
@@ -85,7 +84,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   if (intent === "saveSettings") {
     const providerInput = String(form.get("rateProvider") ?? "mock");
-    const rateCityInput = String(form.get("rateCity") ?? "").trim();
     const currencyInput = String(form.get("baseCurrency") ?? "USD").toUpperCase();
     // Sync frequency is server-controlled and plan-dependent -- not a
     // merchant-set field. Re-derive from the shop's actual tier rather
@@ -96,14 +94,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       where: { shop },
       update: {
         rateProvider: providerInput,
-        // M1 fix: the city field only renders when provider is
-        // metalpriceapi, so saving on manual/demo submits no rateCity at
-        // all -- that used to be read as "clear the city" and silently
-        // wipe the choice for when the merchant switches back. Only
-        // touch rateCity when the field was actually on the form.
-        ...(providerInput === "metalpriceapi"
-          ? { rateCity: rateCityInput || null }
-          : {}),
         baseCurrency: currencyInput,
         scheduleEnabled: form.get("scheduleEnabled") === "on",
         scheduleInterval: scheduleIntervalMinutes,
@@ -111,7 +101,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       create: {
         shop,
         rateProvider: providerInput,
-        rateCity: rateCityInput || null,
         baseCurrency: currencyInput,
         scheduleInterval: scheduleIntervalMinutes,
       },
@@ -256,29 +245,11 @@ export default function Settings() {
               <s-option value="mock">Demo rates (testing only)</s-option>
             </s-select>
 
-            {provider === "metalpriceapi" && (
-              <>
-                {!settings.liveRatesAvailable && (
-                  <s-banner tone="warning" heading="Live rates not configured">
-                    This server doesn't have a rate-provider key configured
-                    yet. Use Manual entry or Demo rates until it does.
-                  </s-banner>
-                )}
-                <s-select
-                  label="India city rate (optional)"
-                  name="rateCity"
-                  value={settings.rateCity}
-                  details="Use a city-specific gold/silver rate instead of the global spot price. Platinum and palladium always use the global rate (no city data exists for them)."
-                >
-                  <s-option value="">Global (no city)</s-option>
-                  {INDIA_RATE_CITIES.map((city) => (
-                    <s-option key={city.code} value={city.code}>
-                      {city.label}
-                      {!city.hasSilver ? " (gold only)" : ""}
-                    </s-option>
-                  ))}
-                </s-select>
-              </>
+            {provider === "metalpriceapi" && !settings.liveRatesAvailable && (
+              <s-banner tone="warning" heading="Live rates not configured">
+                This server doesn't have a rate-provider key configured yet.
+                Use Manual entry or Demo rates until it does.
+              </s-banner>
             )}
 
             <s-text-field

@@ -1,5 +1,5 @@
 import prisma from "../db.server";
-import { SUPPORTED_METALS, INDIA_RATE_CITIES, type MetalCode } from "../constants";
+import { SUPPORTED_METALS, type MetalCode } from "../constants";
 
 const GRAMS_PER_TROY_OZ = 31.1034768;
 
@@ -62,7 +62,7 @@ export async function getRates(shop: string): Promise<MetalRate[]> {
   const settings = await getSettings(shop);
   switch (settings.rateProvider) {
     case "metalpriceapi":
-      return getLiveRates(settings.baseCurrency, settings.rateCity);
+      return getLiveRates(settings.baseCurrency);
     case "manual":
       return fetchManualRates(shop, settings.baseCurrency);
     case "mock":
@@ -72,31 +72,28 @@ export async function getRates(shop: string): Promise<MetalRate[]> {
 }
 
 /**
- * Q1 fix (audit #2): single-flight per (currency, city). Concurrent
- * callers — any number of shops, tabs, or scheduler runs — share one
- * in-flight provider call. In-process only, which matches the app's
- * documented single-instance deployment (L7).
+ * Q1 fix (audit #2): single-flight per currency. Concurrent callers — any
+ * number of shops, tabs, or scheduler runs — share one in-flight provider
+ * call. In-process only, which matches the app's documented single-instance
+ * deployment (L7).
  */
 const inflightRates = new Map<string, Promise<MetalRate[]>>();
 
-function getLiveRates(currency: string, city: string | null): Promise<MetalRate[]> {
-  const key = `${currency}:${city ?? ""}`;
-  const existing = inflightRates.get(key);
+function getLiveRates(currency: string): Promise<MetalRate[]> {
+  const existing = inflightRates.get(currency);
   if (existing) return existing;
-  const promise = getLiveRatesUncoalesced(currency, city).finally(() => {
-    inflightRates.delete(key);
+  const promise = getLiveRatesUncoalesced(currency).finally(() => {
+    inflightRates.delete(currency);
   });
-  inflightRates.set(key, promise);
+  inflightRates.set(currency, promise);
   return promise;
 }
 
 async function getLiveRatesUncoalesced(
   currency: string,
-  city: string | null,
 ): Promise<MetalRate[]> {
-  const cacheCity = city ?? "";
   const cached = await prisma.globalRateCache.findMany({
-    where: { currency, city: cacheCity },
+    where: { currency, city: "" },
   });
   const cachedByMetal = new Map(cached.map((row) => [row.metal, row]));
 
@@ -118,14 +115,14 @@ async function getLiveRatesUncoalesced(
   }
 
   try {
-    const fresh = await fetchMetalPriceApi(currency, city);
+    const fresh = await fetchMetalPriceApi(currency);
     for (const rate of fresh) {
       await prisma.globalRateCache.upsert({
         where: {
           metal_currency_city: {
             metal: rate.metal,
             currency: rate.currency,
-            city: cacheCity,
+            city: "",
           },
         },
         update: {
@@ -137,7 +134,7 @@ async function getLiveRatesUncoalesced(
         create: {
           metal: rate.metal,
           currency: rate.currency,
-          city: cacheCity,
+          city: "",
           pricePerOzt: rate.pricePerOzt,
           pricePerGram: rate.pricePerGram,
           source: rate.source,
@@ -179,20 +176,6 @@ function toMetalRate(row: {
   };
 }
 
-/** Metal -> requested API symbol, using a city-specific rate when the shop
- * has one configured and that city actually publishes data for the metal
- * (platinum/palladium have no India city data at all; some cities only
- * have gold, not silver — see INDIA_RATE_CITIES). Falls back to the plain
- * global symbol otherwise. */
-function symbolFor(metal: MetalCode, city: string | null): string {
-  if (!city) return metal;
-  const cityInfo = INDIA_RATE_CITIES.find((c) => c.code === city);
-  if (!cityInfo) return metal;
-  if (metal === "XAU") return `XAU-${city}`;
-  if (metal === "XAG" && cityInfo.hasSilver) return `XAG-${city}`;
-  return metal; // platinum/palladium: no city data exists, always global
-}
-
 /**
  * MetalPriceAPI (metalpriceapi.com), called with the single APP-OWNED key
  * from the METALPRICEAPI_KEY env var — merchants never see or supply a key
@@ -200,21 +183,14 @@ function symbolFor(metal: MetalCode, city: string | null): string {
  * hosting dashboard. Returns rates quoted as currency-per-metal when using
  * base=USD&currencies=XAU..., inverted to get the metal price.
  */
-async function fetchMetalPriceApi(
-  currency: string,
-  city: string | null,
-): Promise<MetalRate[]> {
+async function fetchMetalPriceApi(currency: string): Promise<MetalRate[]> {
   const apiKey = process.env.METALPRICEAPI_KEY;
   if (!apiKey) {
     throw new Error(
       "Live rates aren't configured on this server yet (missing METALPRICEAPI_KEY). Use Manual entry or Demo rates in Settings meanwhile.",
     );
   }
-  const symbolByMetal = new Map(
-    SUPPORTED_METALS.map((metal) => [metal, symbolFor(metal, city)]),
-  );
-  const requestedSymbols = Array.from(symbolByMetal.values());
-  const url = `https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(apiKey)}&base=${encodeURIComponent(currency)}&currencies=${requestedSymbols.join(",")}`;
+  const url = `https://api.metalpriceapi.com/v1/latest?api_key=${encodeURIComponent(apiKey)}&base=${encodeURIComponent(currency)}&currencies=${SUPPORTED_METALS.join(",")}`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`MetalPriceAPI HTTP ${response.status}`);
@@ -235,10 +211,7 @@ async function fetchMetalPriceApi(
   const now = new Date();
   return SUPPORTED_METALS.flatMap((metal) => {
     // API returns metal-per-currency (e.g. XAU per 1 USD); invert for USD/ozt.
-    // Always stored under the plain metal code — the city suffix only
-    // affects which symbol was requested, not how the rate is keyed.
-    const symbol = symbolByMetal.get(metal) ?? metal;
-    const inverse = payload.rates?.[symbol];
+    const inverse = payload.rates?.[metal];
     if (!inverse || inverse <= 0) return [];
     const pricePerOzt = 1 / inverse;
     return [
@@ -247,7 +220,7 @@ async function fetchMetalPriceApi(
         currency,
         pricePerOzt,
         pricePerGram: pricePerOzt / GRAMS_PER_TROY_OZ,
-        source: symbol === metal ? "metalpriceapi" : `metalpriceapi (${symbol})`,
+        source: "metalpriceapi",
         fetchedAt: now,
       },
     ];
