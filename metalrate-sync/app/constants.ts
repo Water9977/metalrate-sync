@@ -47,6 +47,29 @@ export function gramsPerUnit(code: string): number {
   return WEIGHT_UNITS.find((unit) => unit.code === code)?.gramsPerUnit ?? 1;
 }
 
+/**
+ * Parse a database row id that arrived from user input (a form field or a
+ * query param). Returns null for anything that isn't a real positive
+ * integer.
+ *
+ * This exists because `Number()` returns NaN for junk, and NaN is a trap
+ * when it reaches Prisma: `NaN != null` evaluates TRUE, so a plain null
+ * check doesn't stop it, and Prisma then reports the key as *missing*
+ * ("Argument `id` is missing") and throws -- surfacing to the merchant as a
+ * 500 error page. That happened for real on an App Store review store
+ * (`POST /app/products.data 500`, 2026-08-03) and was independently
+ * reachable by editing `/app/history?run=` to any non-numeric value.
+ * Anywhere a user-supplied id reaches a Prisma `where`, it goes through
+ * here first.
+ */
+export function parseRowId(raw: FormDataEntryValue | string | null): number | null {
+  if (raw == null) return null;
+  const trimmed = String(raw).trim();
+  if (trimmed === "") return null;
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 /** Common karat/fineness presets surfaced in the formula builder UI. */
 export const PURITY_PRESETS = [
   { label: "24K / Fine (0.999)", value: 0.999 },

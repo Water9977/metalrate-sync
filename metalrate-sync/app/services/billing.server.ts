@@ -36,6 +36,41 @@ const PLAN_NAME_TO_TIER: Record<string, PlanTier> = {
   pro: "pro",
 };
 
+/**
+ * Tier applied when a shop has a genuinely ACTIVE subscription whose plan
+ * name we don't recognize. Starter is the deliberate choice: it's the
+ * conservative option (real limits still apply) while still granting full
+ * access to the app.
+ */
+const FALLBACK_TIER: PlanTier = "starter";
+
+/**
+ * Resolve a Shopify plan name to one of our tiers.
+ *
+ * Matching is deliberately forgiving. The only signal Admin GraphQL gives us
+ * for telling plans apart is the human-entered `AppSubscription.name` from
+ * the Partner Dashboard, and that string is one rename away from silently
+ * breaking access for every paying merchant. Exact match first, then a
+ * word-boundary contains check so "Starter Plan", "Ounce Starter" or
+ * "Pro (Monthly)" still resolve correctly instead of falling through.
+ *
+ * Returns null only when the name resembles no known tier at all -- the
+ * caller decides what to do with that, and per requirePlanOrRedirect it is
+ * never "lock the merchant out".
+ */
+function resolveTier(subscriptionName: string): PlanTier | null {
+  const normalized = subscriptionName.trim().toLowerCase();
+  const exact = PLAN_NAME_TO_TIER[normalized];
+  if (exact) return exact;
+
+  // Check "pro" before "starter"? No -- they can't both appear in a sane
+  // plan name, and checking in declaration order keeps this predictable.
+  for (const [key, tier] of Object.entries(PLAN_NAME_TO_TIER)) {
+    if (new RegExp(`\\b${key}\\b`).test(normalized)) return tier;
+  }
+  return null;
+}
+
 interface AdminClient {
   graphql: (
     query: string,
@@ -44,8 +79,21 @@ interface AdminClient {
 }
 
 export interface BillingStatus {
+  /**
+   * The tier whose limits apply. null means one thing only: this shop has NO
+   * active subscription at all. An active subscription always yields a
+   * usable tier, even when its plan name is unrecognized -- see
+   * FALLBACK_TIER.
+   */
   tier: PlanTier | null;
   subscriptionName: string | null;
+  /**
+   * False when the shop is subscribed but the plan name didn't map to a
+   * known tier, so FALLBACK_TIER's limits were applied. Surfaced in Settings
+   * so an operator can spot a Dashboard/code mismatch instead of merchants
+   * quietly getting the wrong limits.
+   */
+  isRecognizedPlan: boolean;
   appHandle: string;
 }
 
@@ -92,12 +140,21 @@ export async function getBillingStatus(
   const active = installation?.activeSubscriptions?.find(
     (sub) => sub.status === "ACTIVE",
   );
-  const tier = active
-    ? (PLAN_NAME_TO_TIER[active.name.trim().toLowerCase()] ?? null)
-    : null;
+
+  // An ACTIVE subscription must always grant access. Resolving an unknown
+  // plan name to null used to make requirePlanOrRedirect bounce the merchant
+  // straight back to plan selection, from which they'd be bounced again --
+  // an inescapable loop for anyone on a plan this code didn't know about.
+  // That's how App Store review bounce #2 happened: Shopify auto-provisions
+  // a $0 private test plan for its reviewers, whose name matches neither
+  // "starter" nor "pro", so downgrading into it locked the reviewer out of
+  // the app entirely. Failing closed is the wrong default for a gate whose
+  // failure mode is denying paying merchants the software they bought.
+  const resolved = active ? resolveTier(active.name) : null;
   return {
-    tier,
+    tier: active ? (resolved ?? FALLBACK_TIER) : null,
     subscriptionName: active?.name ?? null,
+    isRecognizedPlan: active ? resolved !== null : true,
     appHandle: installation?.app?.handle ?? "",
   };
 }

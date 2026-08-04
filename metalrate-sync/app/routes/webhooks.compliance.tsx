@@ -1,14 +1,18 @@
 import type { ActionFunctionArgs } from "react-router";
-import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { authenticateWebhook } from "../services/webhooks.server";
 
 /**
  * Mandatory GDPR compliance webhooks (App Store requirement).
  * MetalRate Sync stores no customer data — only shop-level pricing config —
  * so data requests return nothing and redaction only applies at shop level.
+ *
+ * Uses authenticateWebhook rather than authenticate.webhook directly: these
+ * topics arrive precisely when a shop has uninstalled, which is the exact
+ * case the framework 500s on. See webhooks.server.ts for the full story.
  */
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { topic, shop } = await authenticate.webhook(request);
+  const { topic, shop } = await authenticateWebhook(request);
 
   switch (topic) {
     case "CUSTOMERS_DATA_REQUEST":

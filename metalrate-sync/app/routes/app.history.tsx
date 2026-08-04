@@ -4,6 +4,7 @@ import { useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { parseRowId } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -17,10 +18,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     take: 50,
   });
 
+  // A non-numeric ?run= used to reach Prisma as NaN and throw a 500 error
+  // page. An unparseable id is simply "not found", which the UI already
+  // handles with a clear banner.
+  const parsedRunId = parseRowId(selectedRunId);
+
   let selectedRun = null;
-  if (selectedRunId) {
+  if (parsedRunId != null) {
     selectedRun = await prisma.syncRun.findFirst({
-      where: { shop, id: Number(selectedRunId) },
+      where: { shop, id: parsedRunId },
       include: {
         items: { orderBy: { id: "asc" }, take: 500 },
         _count: { select: { items: true } },

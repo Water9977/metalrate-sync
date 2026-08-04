@@ -9,7 +9,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { requireActivePlan, PLAN_LIMITS } from "../services/billing.server";
-import { WEIGHT_UNITS, gramsPerUnit } from "../constants";
+import { WEIGHT_UNITS, gramsPerUnit, parseRowId } from "../constants";
 
 const PRODUCTS_QUERY = `#graphql
   query metalRateSyncProducts($first: Int!, $query: String) {
@@ -111,8 +111,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
     const weightUnit = String(form.get("weightUnit") ?? "g");
     const weightGrams = weightInput * gramsPerUnit(weightUnit);
-    const formulaIdRaw = String(form.get("formulaId") ?? "");
-    const formulaId = formulaIdRaw ? Number(formulaIdRaw) : null;
+    // Blank means "no formula assigned" and is valid. Anything present but
+    // unparseable is a bad request, not a silent no-op -- the old code did
+    // `Number(raw)`, and because `NaN != null` is true, a junk value slipped
+    // past this guard into Prisma and threw a 500 (seen live on a review
+    // store, 2026-08-03).
+    const formulaIdRaw = String(form.get("formulaId") ?? "").trim();
+    const formulaId = parseRowId(formulaIdRaw);
+    if (formulaIdRaw !== "" && formulaId == null) {
+      return { ok: false, message: "That formula selection wasn't valid" };
+    }
 
     if (formulaId != null) {
       const owned = await prisma.pricingFormula.findFirst({

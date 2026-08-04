@@ -16,6 +16,7 @@ import {
   METAL_TONE,
   SUPPORTED_METALS,
   PURITY_PRESETS,
+  parseRowId,
 } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -43,14 +44,23 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const intent = String(form.get("intent"));
 
   if (intent === "delete") {
-    const id = Number(form.get("id"));
+    const id = parseRowId(form.get("id"));
+    if (id == null) return { ok: false, message: "Invalid formula" };
     await prisma.pricingFormula.deleteMany({ where: { id, shop } });
     return { ok: true, message: "Formula deleted" };
   }
 
   if (intent === "save") {
+    // A blank id means "create". An id that's present but unparseable must
+    // be rejected outright: the old `Number(idRaw)` produced NaN, which is
+    // falsy, so `if (id)` below silently took the CREATE branch and an edit
+    // quietly became a duplicate formula with no error shown.
     const idRaw = form.get("id");
-    const id = idRaw ? Number(idRaw) : null;
+    const hasId = idRaw != null && String(idRaw).trim() !== "";
+    const id = parseRowId(idRaw);
+    if (hasId && id == null) {
+      return { ok: false, message: "Invalid formula" };
+    }
     const name = String(form.get("name") ?? "").trim();
     if (!name) return { ok: false, message: "Name is required" };
 
@@ -66,9 +76,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return raw === "" ? fallback : Number(raw);
     };
     const stopLossRaw = String(form.get("stopLossPerGram") ?? "").trim();
+    // An unsupported metal code stores fine but has no rate to look up, so
+    // every variant on the formula silently becomes "missing_data" forever
+    // with nothing in the UI explaining why. Reject it at the door instead.
+    const metalInput = String(form.get("metal") ?? "XAU").trim().toUpperCase();
+    if (!(SUPPORTED_METALS as readonly string[]).includes(metalInput)) {
+      return { ok: false, message: "Pick a supported metal." };
+    }
     const data = {
       name,
-      metal: String(form.get("metal") ?? "XAU"),
+      metal: metalInput,
       purityFactor: num("purityFactor", 1),
       makingChargeType: String(form.get("makingChargeType") ?? "flat"),
       makingChargeValue: num("makingChargeValue", 0),

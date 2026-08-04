@@ -55,6 +55,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     plan: {
       tier: billing.tier,
       subscriptionName: billing.subscriptionName,
+      isRecognizedPlan: billing.isRecognizedPlan,
       skuCap: limits?.skuCap ?? null,
       enabledCount,
       // Empty appHandle would build .../charges//pricing_plans, which 404s
@@ -167,6 +168,15 @@ export default function Settings() {
                 . Auto-sync every{" "}
                 {describeInterval(settings.scheduleIntervalMinutes)}.
               </s-paragraph>
+              {!plan.isRecognizedPlan && (
+                <s-banner tone="info" heading="Using default plan limits">
+                  Your subscription is active, so the app is fully unlocked —
+                  but the plan name{" "}
+                  {plan.subscriptionName ? `"${plan.subscriptionName}" ` : ""}
+                  isn&apos;t one this app recognizes, so Starter limits are
+                  applied for now. Contact support if that looks wrong.
+                </s-banner>
+              )}
               {plan.skuCap != null && plan.enabledCount > plan.skuCap && (
                 <s-banner tone="critical" heading="Over your plan's SKU limit">
                   You have {plan.enabledCount - plan.skuCap} more SKU
