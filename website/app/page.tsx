@@ -301,8 +301,8 @@ export default async function Home() {
             <div className="hero-visual">
               <Image
                 src="/images/hero-feature.png"
-                alt="Gold, silver, platinum and palladium on dark pedestals with price direction markers"
-                width={1586}
+                alt="MetalRate Sync — palladium, gold, silver and platinum nuggets"
+                width={1600}
                 height={900}
                 sizes="(max-width: 1200px) 100vw, 1040px"
                 priority

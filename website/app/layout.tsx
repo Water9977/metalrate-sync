@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     title: "MetalRate Sync — Live gold & silver price sync for Shopify",
     description:
       "Reprice your whole catalog from live metal rates. Preview every change before it happens. Built for bullion dealers and by-weight jewelers.",
-    images: [{ url: "/images/hero-feature.png", width: 1586, height: 900 }],
+    images: [{ url: "/images/hero-feature.png", width: 1600, height: 900 }],
   },
   twitter: {
     card: "summary_large_image",

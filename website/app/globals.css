@@ -272,7 +272,6 @@ a {
   max-width: 900px;
   height: auto;
   border-radius: var(--radius);
-  border: 1px solid var(--line);
   box-shadow:
     0 40px 90px -30px rgba(0, 0, 0, 0.8),
     0 0 120px -40px var(--gold-glow);
