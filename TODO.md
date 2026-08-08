@@ -2,7 +2,7 @@
 
 Single source of truth for what's left. Cross-linked with [architecture.md](architecture.md) (full narrative/decisions) — this file is the flat checklist to work off of. Slash items as they're done, don't delete them (keep the record).
 
-Last updated: 2026-07-24 — **app submitted, now under Shopify review.** (Previous pass same day: bug fixes deployed + verified live, stale items reconciled, Prisma-upgrade item logged.)
+Last updated: 2026-08-05 — **app approved and live on the Shopify App Store.** Two review bounces fixed and confirmed live in between (bounce #1: plan-change navigation, 5 attempts; bounce #2: 6 real bugs including a still-open Shopify framework bug worked around). Marketing site updated to match reality post-launch.
 
 ---
 
@@ -165,9 +165,20 @@ R4–R6 share one root cause and one fix: new `parseRowId()` in [constants.ts](m
 
 **Also in Shopify's mail (not code):** 4.5.4/4.5.5 — test credentials must be included and valid. No login exists in this app, but the reviewer instructions must say so explicitly rather than leaving the field empty.
 
-## 🚀 SUBMITTED — under Shopify review as of 2026-07-24
+## ✅ LIVE — approved and published to the Shopify App Store (2026-08-05)
 
-The app has been submitted and is now in Shopify's review queue. Everything below this point in "Path to launch" is now historical record, not a live checklist — Shopify's own submission form wouldn't have accepted the app without the required fields filled, so items previously marked "confirm?" (pricing-details field, demo store) are resolved by that fact alone.
+**Ounce: MetalRate Sync is live**: [apps.shopify.com/metalrate-sync](https://apps.shopify.com/metalrate-sync). Confirmed in a real browser — Starter/Pro plans rendering correctly, real reviews section (0 so far, expected for a fresh listing). Everything below this point in "Path to launch" is historical record, not a live checklist.
+
+### Review bounce #2 (2026-08-03/04) — 6 real bugs, all fixed and confirmed live
+
+Two items Shopify flagged directly (1.2.3 plan-downgrade lockout, 2.1.1 India-city-rate errors), plus 4 more found during the same audit pass that Shopify hadn't flagged yet. Full root-cause detail for each is in architecture.md — flat summary:
+
+- **R1** — India city rates errored (free-tier MetalPriceAPI key can't fetch city-level symbols). Feature removed entirely rather than patched around, from the app, Settings UI, and both website pages.
+- **R2** — downgrading into an unrecognized plan (including Shopify's own $0 reviewer test plan) locked the merchant in a redirect loop. Fixed: an active subscription always grants access now; an unrecognized plan name falls back to Starter limits instead of denying entry.
+- **R3** — compliance/uninstall webhooks 500'd for any shop whose token had gone stale before uninstalling — a confirmed, still-open Shopify framework bug (independently reported by another dev, staff-acknowledged, no fix shipped). Worked around with an independent HMAC self-verification fallback so our webhook still returns 200 when the framework's own token-refresh throws.
+- **R4–R8** — three separate `Number("junk") → NaN → Prisma 500` crashes (bad History URL, bad formula pick, formula delete) plus a silent-duplicate-formula bug and an unvalidated-metal-code bug, all closed with one shared `parseRowId()` helper plus two small guards.
+
+Verified with real test scripts against the actual code (26 assertions, deleted after running), not just read-through. Deployed, confirmed live (`SUCCESS`, clean deploy logs).
 
 ### Review bounce #1 (2026-07-27) — 2 fixes deployed, live confirmation still pending
 
@@ -191,15 +202,19 @@ Note this also means Shopify's own documented pattern for this ([redirect-plan-s
 
 **What you need to do:**
 - [x] Click through "Change plan" in the real admin — confirmed 2026-07-28, lands cleanly on Shopify's hosted plan-selection page, single click, no blank/401.
-- [ ] Record a short screen capture (Loom or similar) of that working — this is your "Proof of resolution" for the Dashboard's response form.
-- [ ] In the Partner Dashboard's review-response screen: pick "Show resolved state," paste the recording URL into "Proof of resolution," click **Mark resolved**.
-- [ ] Resubmit for review.
+- [x] Resubmit for review, past both bounces — **approved 2026-08-05.**
+
+### Post-launch (2026-08-05) — marketing site kept in sync with reality
+
+- [x] Swapped every "Get notified" / "Launching soon" / "Ask for early access" CTA across the site for real install links to [apps.shopify.com/metalrate-sync](https://apps.shopify.com/metalrate-sync) — nav, hero, both pricing cards, final CTA, docs page nav. Dropped the "launch pricing may change" hedge now that pricing is live and real.
+- [x] Fixed the in-page nav links (Features/Inside the app/Watch it work/Pricing) not scrolling to their sections — two independent bugs (a CSS `overflow` spec quirk disconnecting `body`'s scroll from `html`, and `scroll-behavior: smooth`/`scrollIntoView({behavior:"smooth"})` unreliably producing zero scroll). Fixed with an instant-scroll click interceptor. Full root-cause detail in architecture.md.
+- [ ] **Waiting on you**: save the new hero image (the "METAL RATE SYNC" branded 4-metals graphic) somewhere on disk and give the path — can't pull image bytes out of a pasted screenshot, need the actual file to wire it in and fix the border styling around it.
 
 **What's actually left now:**
-- [ ] **Wait for Shopify's review decision** on the resubmission. No fixed timeline — could be days to a few weeks, possibly more back-and-forth.
-- [ ] **If bounced again**: fix whatever's flagged, same loop as above.
-- [ ] **Once approved**: Chris (and anyone else) installs via the normal 14-day trial — see "Chris" section below, no private plan.
-- [ ] Optional cleanup, not submission-blocking: split dev/prod DB, credential rotation follow-through if anything new gets exposed, the deferred Prisma major-version bump, L1 (Float→Decimal).
+- [ ] **Chris** (and anyone else) installs via the normal 14-day trial — see "Chris" section below, no private plan.
+- [ ] Optional cleanup, not launch-blocking: split dev/prod DB, credential rotation follow-through if anything new gets exposed, the deferred Prisma major-version bump, L1 (Float→Decimal), the deferred `rateCity`/`GlobalRateCache.city` column drop (queued behind the Prisma upgrade).
+- [ ] Real keyword-volume table + live competitor SEO comparison (Metal Updater, GoldSync, MetalpriceAPI's own app) — started during the SEO audit, interrupted by the Vercel outage discovery, not yet resumed.
+- [ ] The blog/content-hub gap flagged in the SEO audit — biggest lever for organic growth, but a strategy decision, not a quick fix.
 
 ## 🚀 Path to launch — ONE track now (2026-07-19, simplified)
 
