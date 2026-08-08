@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif, IBM_Plex_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SmoothAnchorNav } from "./smooth-anchor-nav";
 import "./globals.css";
 
 const inter = Inter({
@@ -99,6 +100,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {children}
+        <SmoothAnchorNav />
         <Analytics />
       </body>
     </html>
