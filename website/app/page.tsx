@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLiveRates, type LiveTick } from "./lib/rates";
 
 const CONTACT_EMAIL = "metalratesync@gmail.com";
+const APP_STORE_URL = "https://apps.shopify.com/metalrate-sync";
 
 // Shown only if the live fetch fails or the key isn't configured — never
 // silently blank, never presented as live when it isn't.
@@ -283,8 +284,13 @@ export default async function Home() {
             <a href="#pricing">Pricing</a>
             <Link href="/docs">Docs</Link>
           </div>
-          <a className="nav-cta" href="#get">
-            Get notified
+          <a
+            className="nav-cta"
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Install on Shopify
           </a>
         </div>
       </nav>
@@ -316,18 +322,23 @@ export default async function Home() {
                 <strong>and shows you every change before it happens.</strong>
               </p>
               <div className="hero-ctas">
-                <a className="btn-primary" href="#get">
-                  Launching soon on the Shopify App Store
+                <a
+                  className="btn-primary"
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Install on the Shopify App Store
                 </a>
                 <a className="btn-ghost" href="#features">
                   See how it works
                 </a>
               </div>
               <p className="hero-note">
-                14-day free trial at launch · no rate-feed subscription needed
+                14-day free trial · no rate-feed subscription needed
               </p>
               <p className="hero-note hero-note-store">
-                Listed on the Shopify App Store as{" "}
+                Live on the Shopify App Store as{" "}
                 <strong>Ounce: MetalRate Sync</strong>
               </p>
             </div>
@@ -535,8 +546,13 @@ export default async function Home() {
                   <li>Bulk CSV import &amp; export</li>
                   <li>Full audit-trail history</li>
                 </ul>
-                <a className="btn-ghost" href="#get">
-                  Get notified
+                <a
+                  className="btn-ghost"
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Start free trial
                 </a>
               </div>
               <div className="plan featured">
@@ -551,15 +567,19 @@ export default async function Home() {
                   <li>Everything in Starter</li>
                   <li>Priority support</li>
                 </ul>
-                <a className="btn-primary" href="#get">
-                  Get notified
+                <a
+                  className="btn-primary"
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Start free trial
                 </a>
               </div>
             </div>
             <p className="pricing-note">
               Billed through Shopify with your existing subscription — no card
-              details entered anywhere else. Prices shown are launch pricing
-              and may change before general availability.
+              details entered anywhere else.
             </p>
           </div>
         </section>
@@ -589,18 +609,20 @@ export default async function Home() {
               Stop repricing <em>by hand.</em>
             </h2>
             <p>
-              MetalRate Sync is launching soon on the Shopify App Store.
+              MetalRate Sync is live on the Shopify App Store.
               <br />
-              Want early access, or first word when it&apos;s live?
+              Install it and preview your first repricing in minutes.
             </p>
             <a
               className="btn-primary"
-              href={`mailto:${CONTACT_EMAIL}?subject=MetalRate%20Sync%20early%20access`}
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              Ask for early access
+              Install on the Shopify App Store
             </a>
             <p className="final-mail">
-              or write to{" "}
+              Questions first? Write to{" "}
               <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
             </p>
           </div>

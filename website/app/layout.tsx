@@ -78,6 +78,7 @@ const jsonLd = {
   description:
     "Shopify app that automatically reprices products from live gold, silver, platinum and palladium rates, with preview-before-commit and a per-variant audit trail.",
   url: SITE_URL,
+  installUrl: "https://apps.shopify.com/metalrate-sync",
   offers: [
     { "@type": "Offer", name: "Starter", price: "30", priceCurrency: "USD" },
     { "@type": "Offer", name: "Pro", price: "50", priceCurrency: "USD" },

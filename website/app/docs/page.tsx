@@ -79,7 +79,7 @@ const FAQS = [
   },
   {
     q: "How am I billed?",
-    a: "Through Shopify, on your existing Shopify subscription — no card details entered anywhere else. There's a 14-day free trial. Prices shown are launch pricing and may change before general availability.",
+    a: "Through Shopify, on your existing Shopify subscription — no card details entered anywhere else. There's a 14-day free trial.",
   },
   {
     q: "Does it do diamond or gemstone pricing, POS sync, or buyback?",
@@ -115,8 +115,13 @@ export default function Docs() {
             <Link href="/#pricing">Pricing</Link>
             <Link href="/#faq">FAQ</Link>
           </div>
-          <a className="nav-cta" href="/#get">
-            Get notified
+          <a
+            className="nav-cta"
+            href="https://apps.shopify.com/metalrate-sync"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Install on Shopify
           </a>
         </div>
       </nav>
@@ -408,8 +413,7 @@ export default function Docs() {
               <p className="docs-note">
                 14-day free trial on both plans. Manual Preview &amp; Sync is
                 unlimited on every plan — the plan only governs the SKU count and
-                the automatic-sync frequency. Prices are launch pricing and may
-                change before general availability.
+                the automatic-sync frequency.
               </p>
             </section>
 
