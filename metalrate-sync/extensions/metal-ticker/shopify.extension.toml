@@ -1,0 +1,11 @@
+# Learn more about configuring theme app extensions at
+# https://shopify.dev/docs/apps/build/online-store/theme-app-extensions/configuration
+#
+# `name` and `type` are the only required properties for a theme app
+# extension -- its actual behavior lives entirely in blocks/ticker.liquid's
+# {% schema %} tag (target, javascript, stylesheet, settings), confirmed
+# against the live shopify.dev docs before writing this file.
+
+name = "Metal Rate Ticker"
+type = "theme"
+uid = "123bf3dd-85d3-f342-b573-f6c0ad8e00ca4c5b81d5"

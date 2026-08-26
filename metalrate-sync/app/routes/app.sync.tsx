@@ -139,6 +139,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       currency: rate.currency,
       source: rate.source,
       fetchedAt: new Date(rate.fetchedAt),
+      // Irrelevant to applying a price -- the snapshot only ever stored
+      // what's in StoredRate, and this reconstruction is apply-only.
+      previousPricePerGram: null,
     }));
 
     const runId = await applyPreviewedRows(admin, shop, rows, rates);

@@ -35,6 +35,14 @@ export interface MetalRate {
   pricePerGram: number;
   source: string;
   fetchedAt: Date;
+  /**
+   * pricePerGram from immediately before this row's most recent refresh.
+   * Only ever populated for the live ("metalpriceapi") provider — manual
+   * and mock rates don't have a meaningful "previous" value, so this is
+   * always null for those. Powers the storefront ticker's %/direction; not
+   * used anywhere else today.
+   */
+  previousPricePerGram: number | null;
 }
 
 export async function getSettings(shop: string) {
@@ -117,6 +125,12 @@ async function getLiveRatesUncoalesced(
   try {
     const fresh = await fetchMetalPriceApi(currency);
     for (const rate of fresh) {
+      // Carry the row's pre-refresh value forward as "previous" -- read
+      // from cachedByMetal (this function's own pre-refresh snapshot,
+      // taken above) rather than the DB, so this stays correct even under
+      // the single-flight lock's coalesced concurrent callers. A metal
+      // that's never been cached before has no previous value.
+      const priorRow = cachedByMetal.get(rate.metal);
       await prisma.globalRateCache.upsert({
         where: {
           metal_currency_city: {
@@ -130,6 +144,8 @@ async function getLiveRatesUncoalesced(
           pricePerGram: rate.pricePerGram,
           source: rate.source,
           fetchedAt: rate.fetchedAt,
+          previousPricePerGram: priorRow?.pricePerGram ?? null,
+          previousFetchedAt: priorRow?.fetchedAt ?? null,
         },
         create: {
           metal: rate.metal,
@@ -147,7 +163,10 @@ async function getLiveRatesUncoalesced(
     const freshByMetal = new Map(fresh.map((rate) => [rate.metal, rate]));
     return SUPPORTED_METALS.flatMap((metal) => {
       const freshRate = freshByMetal.get(metal);
-      if (freshRate) return [freshRate];
+      if (freshRate) {
+        const priorRow = cachedByMetal.get(metal);
+        return [{ ...freshRate, previousPricePerGram: priorRow?.pricePerGram ?? null }];
+      }
       const cachedRow = cachedByMetal.get(metal);
       return cachedRow ? [toMetalRate(cachedRow)] : [];
     });
@@ -165,6 +184,7 @@ function toMetalRate(row: {
   pricePerGram: number;
   source: string;
   fetchedAt: Date;
+  previousPricePerGram?: number | null;
 }): MetalRate {
   return {
     metal: row.metal as MetalCode,
@@ -173,6 +193,7 @@ function toMetalRate(row: {
     pricePerGram: row.pricePerGram,
     source: row.source,
     fetchedAt: row.fetchedAt,
+    previousPricePerGram: row.previousPricePerGram ?? null,
   };
 }
 
@@ -222,6 +243,9 @@ async function fetchMetalPriceApi(currency: string): Promise<MetalRate[]> {
         pricePerGram: pricePerOzt / GRAMS_PER_TROY_OZ,
         source: "metalpriceapi",
         fetchedAt: now,
+        // Overwritten by the caller with the real pre-refresh value; this
+        // function only knows the freshly-fetched side of the comparison.
+        previousPricePerGram: null,
       },
     ];
   });
@@ -253,6 +277,9 @@ async function fetchManualRates(
     pricePerOzt: row.pricePerGram * GRAMS_PER_TROY_OZ,
     source: "manual",
     fetchedAt: row.updatedAt,
+    // Manual board rates have no tracked history, so there's no
+    // meaningful "previous" value to diff against.
+    previousPricePerGram: null,
   }));
 }
 
@@ -276,6 +303,7 @@ function mockRates(currency: string): MetalRate[] {
       pricePerGram: pricePerOzt / GRAMS_PER_TROY_OZ,
       source: "mock",
       fetchedAt: now,
+      previousPricePerGram: null,
     };
   });
 }

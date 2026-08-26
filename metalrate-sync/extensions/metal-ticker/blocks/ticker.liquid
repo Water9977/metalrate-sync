@@ -1,0 +1,170 @@
+{% doc %}
+  Live metal-price ticker for a shop's storefront. Renders an empty,
+  invisible shell -- assets/ticker.js fetches /apps/ticker/rates client-side
+  (Shopify's App Proxy, see [app_proxy] in shopify.app.toml) and populates
+  it. All merchant configuration from {% schema %} below is threaded through
+  to the JS via data-* attributes, and colors/spacing via CSS custom
+  properties, both read directly off this wrapper element -- no separate
+  JSON blob needed since every setting here is a simple scalar.
+
+  @example
+  {% content_for 'block', type: 'ticker', id: 'metal-ticker' %}
+{% enddoc %}
+
+<div
+  id="mrs-ticker-{{ block.id }}"
+  class="mrs-ticker"
+  data-mrs-ticker
+  data-style="{{ block.settings.style }}"
+  data-scroll-speed="{{ block.settings.scroll_speed }}"
+  data-show-change="{{ block.settings.show_change }}"
+  data-show-gold="{{ block.settings.show_gold }}"
+  data-show-silver="{{ block.settings.show_silver }}"
+  data-show-platinum="{{ block.settings.show_platinum }}"
+  data-show-palladium="{{ block.settings.show_palladium }}"
+  role="region"
+  aria-label="{{ 'ticker.aria_label' | t }}"
+  aria-live="off"
+  style="
+    --mrs-bg: {{ block.settings.background_color }};
+    --mrs-text: {{ block.settings.text_color }};
+    --mrs-accent: {{ block.settings.accent_color }};
+    --mrs-up: {{ block.settings.up_color }};
+    --mrs-down: {{ block.settings.down_color }};
+    --mrs-padding-top: {{ block.settings.padding_top }}px;
+    --mrs-padding-bottom: {{ block.settings.padding_bottom }}px;
+  "
+  {{ block.shopify_attributes }}
+>
+  <div class="mrs-ticker__viewport" data-mrs-viewport>
+    <div class="mrs-ticker__track" data-mrs-track></div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Metal Price Ticker",
+  "target": "section",
+  "javascript": "ticker.js",
+  "stylesheet": "ticker.css",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Display style",
+      "options": [
+        { "value": "scrolling", "label": "Scrolling strip" },
+        { "value": "static", "label": "Static cards" }
+      ],
+      "default": "scrolling"
+    },
+    {
+      "type": "range",
+      "id": "scroll_speed",
+      "label": "Scroll speed",
+      "info": "Seconds for one full loop of the scrolling strip. Lower is faster. No effect in static mode.",
+      "min": 10,
+      "max": 90,
+      "step": 5,
+      "unit": "s",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "Metals"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_gold",
+      "label": "Show gold",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_silver",
+      "label": "Show silver",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_platinum",
+      "label": "Show platinum",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_palladium",
+      "label": "Show palladium",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_change",
+      "label": "Show % change and direction",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background",
+      "default": "#0e1014"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#ede9df"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent (metal labels, live indicator)",
+      "default": "#e8b54a"
+    },
+    {
+      "type": "color",
+      "id": "up_color",
+      "label": "Price up",
+      "default": "#4ade80"
+    },
+    {
+      "type": "color",
+      "id": "down_color",
+      "label": "Price down",
+      "default": "#f87171"
+    },
+    {
+      "type": "header",
+      "content": "Spacing"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Top padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Bottom padding",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    }
+  ]
+}
+{% endschema %}

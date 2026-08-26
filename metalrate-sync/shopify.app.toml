@@ -25,7 +25,20 @@ api_version = "2026-10"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+# write_app_proxy added for the storefront ticker theme extension -- required
+# by Shopify to configure an app proxy at all, confirmed against the live docs
+# before adding rather than guessed.
+scopes = "write_products,write_app_proxy"
 
 [auth]
 redirect_urls = [ "https://metalrate-sync-app-production.up.railway.app/auth/callback" ]
+
+[app_proxy]
+# Powers the storefront ticker theme extension: a shop's storefront hits
+# https://<shop>.myshopify.com/apps/ticker/rates, Shopify proxies that to
+# this app at /apps/proxy/rates (authenticate.public.appProxy verifies
+# Shopify's HMAC signature on every request -- see
+# app/routes/apps.proxy.rates.tsx).
+url = "/apps/proxy"
+prefix = "apps"
+subpath = "ticker"

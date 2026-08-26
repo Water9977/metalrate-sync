@@ -1,0 +1,195 @@
+/*
+ * MetalRate Sync -- storefront ticker styles.
+ *
+ * Hidden by default (`display: none`) so a shop with no data (uninstalled
+ * app, inactive subscription, transient fetch failure) never flashes an
+ * empty box -- assets/ticker.js adds `.is-ready` only once it has real
+ * metals to show. Colors and spacing come from CSS custom properties set
+ * inline by blocks/ticker.liquid from the merchant's theme-editor settings;
+ * the values below are fallbacks matching the brand's dark/gold palette.
+ */
+
+.mrs-ticker {
+  display: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--mrs-bg, #0e1014);
+  color: var(--mrs-text, #ede9df);
+  padding-top: var(--mrs-padding-top, 24px);
+  padding-bottom: var(--mrs-padding-bottom, 24px);
+  font-family: -apple-system, "Segoe UI", sans-serif;
+
+  /* Full-bleed: most Online Store 2.0 themes wrap every section in their
+     own max-width/padded container, which otherwise squeezes this ticker
+     in from both edges regardless of our own width. Breaking out via
+     viewport width is the standard technique and works across themes
+     without needing to know or fight that theme's specific container
+     class. width:100% alone (the previous approach) only fills whatever
+     box the theme already constrained us to, which is exactly the gap
+     reported live on a real store. */
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+.mrs-ticker.is-ready {
+  display: block;
+}
+
+.mrs-ticker *,
+.mrs-ticker *::before,
+.mrs-ticker *::after {
+  box-sizing: border-box;
+}
+
+.mrs-ticker__viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ---------- scrolling strip ---------- */
+
+.mrs-ticker--scrolling .mrs-ticker__viewport {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+}
+
+.mrs-ticker--scrolling .mrs-ticker__track {
+  display: flex;
+  width: max-content;
+}
+
+.mrs-ticker--animated .mrs-ticker__track {
+  animation: mrs-marquee var(--mrs-duration, 30s) linear infinite;
+}
+
+.mrs-ticker--animated .mrs-ticker__viewport:hover .mrs-ticker__track,
+.mrs-ticker--animated .mrs-ticker__viewport:focus-within .mrs-ticker__track {
+  animation-play-state: paused;
+}
+
+@keyframes mrs-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Content is duplicated exactly once in JS, so -50% is a full,
+       seamless loop back to the start. */
+    transform: translateX(-50%);
+  }
+}
+
+.mrs-ticker--scrolling .mrs-ticker__item {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 28px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+}
+
+/* ---------- static cards ---------- */
+
+.mrs-ticker--static .mrs-ticker__viewport {
+  overflow: visible;
+  /* Cards are discrete, so unlike the scrolling strip they shouldn't
+     touch the raw viewport edge now that the ticker itself is full-bleed. */
+  padding: 0 20px;
+}
+
+.mrs-ticker--static .mrs-ticker__track {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.mrs-ticker--static .mrs-ticker__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ---------- shared item content ---------- */
+
+.mrs-ticker__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mrs-accent, #e8b54a);
+}
+
+.mrs-ticker__price {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mrs-text, #ede9df);
+}
+
+.mrs-ticker--static .mrs-ticker__price {
+  font-size: 20px;
+}
+
+.mrs-ticker__change {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mrs-ticker__change--up {
+  color: var(--mrs-up, #4ade80);
+}
+
+.mrs-ticker__change--down {
+  color: var(--mrs-down, #f87171);
+}
+
+.mrs-ticker__change--flat {
+  color: var(--mrs-text, #ede9df);
+  opacity: 0.6;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 749px) {
+  .mrs-ticker--scrolling .mrs-ticker__item {
+    padding: 0 18px;
+    gap: 8px;
+  }
+
+  .mrs-ticker--static .mrs-ticker__track {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .mrs-ticker--static .mrs-ticker__price {
+    font-size: 17px;
+  }
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mrs-ticker--animated .mrs-ticker__track {
+    animation: none;
+  }
+}

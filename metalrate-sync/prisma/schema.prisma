@@ -63,6 +63,13 @@ model GlobalRateCache {
   source       String
   fetchedAt    DateTime @default(now())
 
+  // Carried forward from whatever this row's pricePerGram/fetchedAt were
+  // immediately before the current refresh, so a % change + direction can
+  // be shown (e.g. the storefront ticker) without a separate history table.
+  // Null only until a row has been refreshed at least once.
+  previousPricePerGram Float?
+  previousFetchedAt    DateTime?
+
   @@unique([metal, currency, city])
 }
 
