@@ -286,64 +286,76 @@ a {
   }
 }
 
-/* ---------- ticker (signature) ---------- */
+/* ---------- ticker (signature) ----------
+   Same scrolling-marquee mechanic as the actual in-app storefront ticker
+   (extensions/metal-ticker/assets/ticker.css in the app repo) — full-bleed
+   dark bar, edge mask-fade, content duplicated once for a seamless
+   translateX(-50%) loop. Kept as its own copy rather than a shared import
+   since one lives in a Shopify theme extension (raw static assets, no
+   build step) and the other in this Next.js site — but the visual and
+   motion should read as the same product. */
 
 .ticker {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: var(--coal);
   margin-top: 64px;
-}
-
-.ticker-inner {
-  max-width: var(--maxw);
-  margin: 0 auto;
-  padding: 0 24px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.tick {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 18px 20px;
-  border-left: 1px solid var(--line);
-  font-family: var(--font-mono-stack);
-  position: relative;
   overflow: hidden;
 }
 
-.tick:first-child {
-  border-left: none;
-}
-
-.tick::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    rgba(232, 181, 74, 0.05) 50%,
-    transparent 70%
+.ticker-viewport {
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
   );
-  transform: translateX(-100%);
-  animation: shimmer 7s ease-in-out infinite;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
 }
 
-@keyframes shimmer {
-  0%, 60% { transform: translateX(-100%); }
-  80%, 100% { transform: translateX(100%); }
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 32s linear infinite;
+}
+
+.ticker-viewport:hover .ticker-track,
+.ticker-viewport:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tick::after {
+  .ticker-track {
     animation: none;
   }
   html {
     scroll-behavior: auto;
   }
+}
+
+.tick {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 18px 28px;
+  border-left: 1px solid var(--line);
+  font-family: var(--font-mono-stack);
+  white-space: nowrap;
 }
 
 .tick-metal {
@@ -384,19 +396,22 @@ a {
   font-family: var(--font-mono-stack);
 }
 
+.ticker-app-note {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 4px 24px 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ticker-app-note a {
+  color: var(--gold);
+}
+
 @media (max-width: 820px) {
-  .ticker-inner {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .tick:nth-child(3) {
-    border-left: none;
-  }
   .tick {
-    border-top: 1px solid var(--line);
-  }
-  .tick:first-child,
-  .tick:nth-child(2) {
-    border-top: none;
+    padding: 16px 18px;
+    gap: 8px;
   }
 }
 

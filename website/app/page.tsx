@@ -163,20 +163,26 @@ const FAQS = [
 ];
 
 function Ticker({ ticks, isLive, fetchedAt }: TickerProps) {
+  // Duplicated once for a seamless translateX(-50%) loop — same technique
+  // as the actual in-app storefront ticker. Server-rendered, so both copies
+  // are present in the initial HTML; no hydration mismatch.
+  const loop = [...ticks, ...ticks];
   return (
-    <div className="ticker" aria-label="Metal spot rates">
-      <div className="ticker-inner">
-        {ticks.map((t) => (
-          <div className="tick" key={t.metal}>
-            <span className="tick-metal">{t.metal}</span>
-            <span className="tick-price">${t.price}</span>
-            {isLive && (
-              <span className="tick-live" aria-label="live" title="Live rate">
-                ●
-              </span>
-            )}
-          </div>
-        ))}
+    <div className="ticker" aria-label="Metal spot rates — live gold, silver, platinum and palladium prices">
+      <div className="ticker-viewport">
+        <div className="ticker-track">
+          {loop.map((t, i) => (
+            <div className="tick" key={`${t.metal}-${i}`}>
+              <span className="tick-metal">{t.metal}</span>
+              <span className="tick-price">${t.price}</span>
+              {isLive && (
+                <span className="tick-live" aria-label="live" title="Live rate">
+                  ●
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
       <p className="ticker-caption">
         {isLive
@@ -190,6 +196,13 @@ function Ticker({ ticks, isLive, fetchedAt }: TickerProps) {
                 : ""
             }`
           : "USD / troy oz · sample rates — live inside the app"}
+      </p>
+      <p className="ticker-app-note">
+        You can also have this ticker installed on your own store with{" "}
+        <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+          our app
+        </a>
+        .
       </p>
     </div>
   );
@@ -545,6 +558,7 @@ export default async function Home() {
                   <li>All formula features, incl. stop-loss</li>
                   <li>Bulk CSV import &amp; export</li>
                   <li>Full audit-trail history</li>
+                  <li>Storefront rate ticker</li>
                 </ul>
                 <a
                   className="btn-ghost"
