@@ -5,16 +5,20 @@
    ============================================================ */
 
 :root {
-  --ink: #07080a;
-  --coal: #0e1014;
-  --coal-2: #14171d;
-  --line: #23262e;
+  /* True neutral (R=G=B) instead of the earlier navy-tinted grays — card
+     edges are a plain black/white hairline now, so they read as a border
+     against any surface instead of a subtly-colored line that can blend
+     into the (also navy-tinted) background right next to it. */
+  --ink: #0a0a0a;
+  --coal: #121212;
+  --coal-2: #1a1a1a;
+  --line: rgba(255, 255, 255, 0.12);
   --gold: #e8b54a;
   --gold-deep: #8a6519;
   --gold-glow: rgba(232, 181, 74, 0.14);
   --silver: #c9cdd3;
   --text: #ede9df;
-  --muted: #8b8f98;
+  --muted: #999999;
   --up: #4ade80;
   --down: #f87171;
 
@@ -81,7 +85,7 @@ a {
   inset: 0 0 auto 0;
   z-index: 50;
   border-bottom: 1px solid transparent;
-  background: linear-gradient(to bottom, rgba(7, 8, 10, 0.92), rgba(7, 8, 10, 0.75));
+  background: linear-gradient(to bottom, rgba(10, 10, 10, 0.92), rgba(10, 10, 10, 0.75));
   backdrop-filter: blur(12px);
   border-bottom-color: var(--line);
 }
