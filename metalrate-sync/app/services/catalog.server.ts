@@ -1,6 +1,11 @@
 /**
- * Full-catalog fetch keyed by SKU, used by CSV import and preview to match
- * against real Shopify variants.
+ * Full-catalog fetch keyed by variant ID, used by CSV import/export to match
+ * against real Shopify variants. Keyed by ID rather than SKU because SKU is
+ * optional in Shopify and plenty of real stores never set it (found live:
+ * a 1,340-product design-partner catalog with zero SKUs anywhere) -- keying
+ * by SKU there would silently drop every variant that has no SKU, since a
+ * Map can only hold one entry per key and every skuless variant would
+ * collide on the same "" key. `id` (Shopify's GID) is always present.
  *
  * Small/medium catalogs (up to FAST_PATH_CAP) use plain paginated GraphQL,
  * which is effectively instant. Larger catalogs switch to Shopify's Bulk
@@ -115,8 +120,8 @@ function sleep(ms: number): Promise<void> {
 async function paginateFast(
   admin: AdminClient,
   cap: number,
-): Promise<{ bySku: Map<string, CatalogVariant>; hitCap: boolean }> {
-  const bySku = new Map<string, CatalogVariant>();
+): Promise<{ byId: Map<string, CatalogVariant>; hitCap: boolean }> {
+  const byId = new Map<string, CatalogVariant>();
   let after: string | null = null;
   let fetched = 0;
 
@@ -136,20 +141,21 @@ async function paginateFast(
     if (!connection) break;
 
     for (const edge of connection.edges) {
-      if (edge.node.sku) bySku.set(edge.node.sku, toCatalogVariant(edge.node));
+      const variant = toCatalogVariant(edge.node);
+      byId.set(variant.variantId, variant);
       fetched += 1;
     }
 
     if (!connection.pageInfo.hasNextPage) {
-      return { bySku, hitCap: false };
+      return { byId, hitCap: false };
     }
     if (fetched >= cap) {
-      return { bySku, hitCap: true };
+      return { byId, hitCap: true };
     }
     after = connection.edges[connection.edges.length - 1]?.cursor ?? null;
     if (!after) break;
   }
-  return { bySku, hitCap: fetched >= cap };
+  return { byId, hitCap: fetched >= cap };
 }
 
 // S2 fix (audit #2): parse the JSONL as it streams instead of buffering the
@@ -158,9 +164,9 @@ async function paginateFast(
 async function downloadAndParseJsonl(
   url: string,
 ): Promise<Map<string, CatalogVariant>> {
-  const bySku = new Map<string, CatalogVariant>();
+  const byId = new Map<string, CatalogVariant>();
   const response = await fetch(url);
-  if (!response.body) return bySku;
+  if (!response.body) return byId;
 
   const decoder = new TextDecoder();
   const reader = response.body.getReader();
@@ -169,7 +175,8 @@ async function downloadAndParseJsonl(
   const parseLine = (line: string) => {
     if (!line.trim()) return;
     const node = JSON.parse(line) as RawVariantNode;
-    if (node.sku) bySku.set(node.sku, toCatalogVariant(node));
+    const variant = toCatalogVariant(node);
+    byId.set(variant.variantId, variant);
   };
 
   for (;;) {
@@ -183,7 +190,7 @@ async function downloadAndParseJsonl(
   remainder += decoder.decode();
   parseLine(remainder);
 
-  return bySku;
+  return byId;
 }
 
 async function runBulkCatalogFetch(
@@ -264,21 +271,35 @@ async function runBulkCatalogFetch(
  * requests. Without it, catalogs larger than FAST_PATH_CAP are truncated
  * rather than escalated to a bulk fetch.
  */
-export async function fetchCatalogBySku(
+export async function fetchCatalog(
   admin: AdminClient,
   shop?: string,
-): Promise<{ bySku: Map<string, CatalogVariant>; truncated: boolean }> {
+): Promise<{ byId: Map<string, CatalogVariant>; truncated: boolean }> {
   const fast = await paginateFast(admin, FAST_PATH_CAP);
   if (!fast.hitCap) {
-    return { bySku: fast.bySku, truncated: false };
+    return { byId: fast.byId, truncated: false };
   }
   if (!shop) {
-    return { bySku: fast.bySku, truncated: true };
+    return { byId: fast.byId, truncated: true };
   }
 
   const full = await runBulkCatalogFetch(admin, shop);
   if (full) {
-    return { bySku: full, truncated: false };
+    return { byId: full, truncated: false };
   }
-  return { bySku: fast.bySku, truncated: true };
+  return { byId: fast.byId, truncated: true };
+}
+
+/** Secondary index over a byId catalog map for SKU-based lookups (import
+ * fallback for rows that only have a sku, no variant_id). Variants with no
+ * SKU are simply absent from this index -- never collapsed onto a shared ""
+ * key the way the old SKU-only map did. */
+export function indexBySku(
+  byId: Map<string, CatalogVariant>,
+): Map<string, CatalogVariant> {
+  const bySku = new Map<string, CatalogVariant>();
+  for (const variant of byId.values()) {
+    if (variant.sku) bySku.set(variant.sku, variant);
+  }
+  return bySku;
 }

@@ -24,6 +24,16 @@
     }
     root.setAttribute("data-mrs-initialized", "true");
 
+    // App embed blocks (ticker-embed.liquid) are injected by Shopify right
+    // before the closing </body> tag -- below the footer, not where a
+    // ticker belongs. Move it to the very top of <body> once, matching
+    // where the section-targeted twin sits when a merchant places it above
+    // their header. Harmless no-op if already there (re-init on
+    // shopify:section:load).
+    if (root.getAttribute("data-mrs-reposition") === "true" && document.body.firstChild !== root) {
+      document.body.insertBefore(root, document.body.firstChild);
+    }
+
     var track = root.querySelector("[data-mrs-track]");
     if (!track) {
       return;

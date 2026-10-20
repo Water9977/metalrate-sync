@@ -1,5 +1,5 @@
 import prisma from "../db.server";
-import { fetchCatalogBySku, type CatalogVariant } from "./catalog.server";
+import { fetchCatalog, indexBySku, type CatalogVariant } from "./catalog.server";
 import { parseImportCsv } from "./csv.server";
 import { PLAN_LIMITS, type PlanTier } from "./billing.server";
 
@@ -50,18 +50,25 @@ export async function runImport(
     return { ok: false, message: "No data rows found in that CSV.", summary: null };
   }
 
-  // M5 fix: duplicate SKU rows each used to upsert independently and each
-  // increment summary.updated, so a CSV with the same SKU twice over-
-  // reported how many variants actually changed. Dedupe first, keeping
-  // the last occurrence — the same row that would "win" in the DB anyway
-  // since upserts for the same SKU overwrite each other in row order.
-  const dedupedBySku = new Map(rows.map((row) => [row.sku, row]));
-  const dedupedRows = Array.from(dedupedBySku.values());
+  // M5 fix: duplicate rows for the same variant each used to upsert
+  // independently and each increment summary.updated, so a CSV with the
+  // same row twice over-reported how many variants actually changed.
+  // Dedupe first, keeping the last occurrence — the same row that would
+  // "win" in the DB anyway since upserts for the same variant overwrite
+  // each other in row order. Keyed by variant_id when present (our own
+  // export always fills it in) falling back to sku — never sku alone,
+  // since a catalog with no SKUs would collapse every row onto the same
+  // "" key and silently keep only the last one.
+  const dedupedByKey = new Map(
+    rows.map((row) => [row.variantId ?? row.sku, row]),
+  );
+  const dedupedRows = Array.from(dedupedByKey.values());
 
-  const [{ bySku, truncated }, formulas] = await Promise.all([
-    fetchCatalogBySku(admin, shop),
+  const [{ byId, truncated }, formulas] = await Promise.all([
+    fetchCatalog(admin, shop),
     prisma.pricingFormula.findMany({ where: { shop, active: true } }),
   ]);
+  const bySku = indexBySku(byId);
   const formulaByName = new Map(
     formulas.map((formula) => [formula.name.toLowerCase(), formula]),
   );
@@ -75,8 +82,15 @@ export async function runImport(
     planCapped: [],
   };
 
+  // variant_id (our own export's identifier, always present regardless of
+  // SKU) takes priority; sku is the fallback for a row a merchant typed by
+  // hand.
+  const matchRow = (row: (typeof dedupedRows)[number]): CatalogVariant | undefined =>
+    (row.variantId ? byId.get(row.variantId) : undefined) ??
+    (row.sku ? bySku.get(row.sku) : undefined);
+
   const matchedVariantIds = dedupedRows
-    .map((row) => bySku.get(row.sku)?.variantId)
+    .map((row) => matchRow(row)?.variantId)
     .filter((id): id is string => Boolean(id));
   const existingConfigs = await prisma.variantConfig.findMany({
     where: { shop, variantId: { in: matchedVariantIds } },
@@ -98,9 +112,9 @@ export async function runImport(
       : await prisma.variantConfig.count({ where: { shop, enabled: true } });
 
   for (const row of dedupedRows) {
-    const variant: CatalogVariant | undefined = bySku.get(row.sku);
+    const variant = matchRow(row);
     if (!variant) {
-      summary.notFound.push(row.sku);
+      summary.notFound.push(row.sku || row.variantId || "(row with no sku or variant_id)");
       continue;
     }
     summary.matched += 1;

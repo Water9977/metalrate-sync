@@ -2,7 +2,7 @@
 
 client_id = "ef18120fb0529e153befdc750c62c8c1"
 name = "Ounce: MetalRate Sync"
-application_url = "https://metalrate-sync-app-production.up.railway.app"
+application_url = "https://metalrate-sync-app-production-5235.up.railway.app"
 embedded = true
 
 [build]
@@ -31,7 +31,7 @@ api_version = "2026-10"
 scopes = "write_products,write_app_proxy"
 
 [auth]
-redirect_urls = [ "https://metalrate-sync-app-production.up.railway.app/auth/callback" ]
+redirect_urls = [ "https://metalrate-sync-app-production-5235.up.railway.app/auth/callback" ]
 
 [app_proxy]
 # Powers the storefront ticker theme extension: a shop's storefront hits

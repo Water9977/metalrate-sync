@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { fetchCatalogBySku } from "../services/catalog.server";
+import { fetchCatalog } from "../services/catalog.server";
 import { toCsv } from "../services/csv.server";
 
 /**
@@ -21,16 +21,24 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const { bySku } = await fetchCatalogBySku(admin, shop);
+  const { byId } = await fetchCatalog(admin, shop);
   const configs = await prisma.variantConfig.findMany({
     where: { shop },
     include: { formula: true },
   });
-  const configBySku = new Map(configs.map((config) => [config.sku, config]));
+  // Keyed by variantId, not sku -- sku is optional in Shopify and a config
+  // for a skuless variant would otherwise collapse onto the same "" key as
+  // every other skuless variant's config, showing the wrong row's
+  // weight/formula for most of the catalog on any shop that doesn't use
+  // SKUs.
+  const configByVariantId = new Map(
+    configs.map((config) => [config.variantId, config]),
+  );
 
-  const rows = Array.from(bySku.values()).map((variant) => {
-    const config = configBySku.get(variant.sku);
+  const rows = Array.from(byId.values()).map((variant) => {
+    const config = configByVariantId.get(variant.variantId);
     return {
+      variant_id: variant.variantId,
       sku: variant.sku,
       product: variant.productTitle,
       variant: variant.variantTitle,
@@ -41,6 +49,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 
   const csv = toCsv(rows, [
+    "variant_id",
     "sku",
     "product",
     "variant",

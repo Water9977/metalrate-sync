@@ -4,6 +4,7 @@ import { gramsPerUnit } from "../constants";
 
 export interface ImportRow {
   sku: string;
+  variantId: string | null;
   weightGrams: number | null;
   formulaName: string | null;
 }
@@ -42,8 +43,18 @@ export function parseImportCsv(text: string): ImportParseResult {
 
   const header = rows[0].map((cell) => cell.trim().toLowerCase());
   const skuIdx = header.indexOf("sku");
-  if (skuIdx === -1) {
-    return { rows: [], error: 'CSV must have a "sku" column.' };
+  // variant_id is the identifier our own CSV export always fills in, since
+  // SKU is optional in Shopify -- plenty of real stores never set one (a
+  // 1,340-product design-partner catalog with zero SKUs is what surfaced
+  // this). A row needs at least one of the two to be matchable.
+  const variantIdIdx = header.findIndex(
+    (cell) => cell === "variant_id" || cell === "variantid",
+  );
+  if (skuIdx === -1 && variantIdIdx === -1) {
+    return {
+      rows: [],
+      error: 'CSV must have a "sku" or "variant_id" column.',
+    };
   }
   const weightIdx = header.findIndex((cell) => cell in WEIGHT_COLUMN_UNITS);
   const weightUnit = weightIdx >= 0 ? WEIGHT_COLUMN_UNITS[header[weightIdx]] : "g";
@@ -53,12 +64,15 @@ export function parseImportCsv(text: string): ImportParseResult {
 
   const parsed: ImportRow[] = [];
   for (const row of rows.slice(1)) {
-    const sku = (row[skuIdx] ?? "").trim();
-    if (!sku) continue;
+    const sku = skuIdx >= 0 ? (row[skuIdx] ?? "").trim() : "";
+    const variantId =
+      variantIdIdx >= 0 ? (row[variantIdIdx] ?? "").trim() || null : null;
+    if (!sku && !variantId) continue;
     const weightRaw = weightIdx >= 0 ? (row[weightIdx] ?? "").trim() : "";
     const weight = weightRaw ? Number(weightRaw) : null;
     parsed.push({
       sku,
+      variantId,
       weightGrams:
         weight != null && !Number.isNaN(weight)
           ? weight * gramsPerUnit(weightUnit)

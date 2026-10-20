@@ -137,15 +137,18 @@ export default function BulkImport() {
         <fetcher.Form method="POST" encType="multipart/form-data">
           <s-stack direction="block" gap="base">
             <s-paragraph>
-              Required column: <s-text type="strong">sku</s-text>. Optional:
-              a weight column in whatever unit you already use —{" "}
+              Required: <s-text type="strong">variant_id</s-text> or{" "}
+              <s-text type="strong">sku</s-text> (the file you downloaded
+              above already has both — don't delete either column, even if
+              your products don't use SKUs). Optional: a weight column in
+              whatever unit you already use —{" "}
               <s-text type="strong">weight_grams</s-text>,{" "}
               <s-text type="strong">weight_tola</s-text>,{" "}
               <s-text type="strong">weight_vori</s-text>,{" "}
               <s-text type="strong">weight_troy_oz</s-text>, or{" "}
               <s-text type="strong">weight_dwt</s-text> — and{" "}
               <s-text type="strong">formula</s-text> (must match an existing
-              formula name exactly). Rows with a SKU the app can't find in
+              formula name exactly). Rows the app can't match to a product in
               your store are reported, not silently dropped.
             </s-paragraph>
             <s-drop-zone
