@@ -50,12 +50,13 @@ const FEATURES = [
   },
   {
     icon: "⇪",
-    title: "Bulk import by SKU",
+    title: "Bulk import, no SKUs needed",
     body: (
       <>
         Download your catalog as a CSV, set weights and formulas in Excel,
-        upload once. Rows the app can’t match are reported, not silently
-        dropped. Built for thousand-SKU catalogs.
+        upload once. Products are matched automatically, so you never have to
+        create SKUs. Rows the app can’t match are reported, not silently
+        dropped. Built for thousand-product catalogs.
       </>
     ),
   },
@@ -102,7 +103,7 @@ const SHOTS = [
     src: "/images/shot-import.png",
     kicker: "Bulk import",
     title: "A whole catalog in one upload",
-    body: "Export, edit in your spreadsheet, re-upload. Matched by SKU, with a report of anything that didn't match instead of silence.",
+    body: "Export, edit in your spreadsheet, re-upload. Products match automatically, no SKUs required, with a report of anything that didn't match instead of silence.",
     alt: "Bulk import screen with CSV download and upload steps",
   },
   {
@@ -150,7 +151,15 @@ const FAQS = [
   },
   {
     q: "How big a catalog can it handle?",
-    a: "Starter tracks up to 800 SKUs, Pro is unlimited. Bulk import automatically switches to Shopify's Bulk Operations API for large catalogs, so a thousand-plus-SKU store is read reliably instead of timing out.",
+    a: "Starter tracks up to 800 products (variants), Pro is unlimited. Bulk import automatically switches to Shopify's Bulk Operations API for large catalogs, so a store with thousands of products is read reliably instead of timing out.",
+  },
+  {
+    q: "Do I need SKUs on my products?",
+    a: "No. Bulk import matches your products by their Shopify ID, which every product already has, so a store with no SKUs at all can export its catalog, fill in weights and formulas, and re-upload. SKUs are optional.",
+  },
+  {
+    q: "Can I show live gold and silver prices on my storefront?",
+    a: "Yes. The app includes a storefront ticker you add from your theme editor, with no code. Choose a scrolling strip or static cards, which metals to show, and your own colors. It works on older themes too, through the theme editor's App embeds panel. It's included on both plans.",
   },
   {
     q: "Can I price in Indian rupees?",
@@ -440,6 +449,53 @@ export default async function Home() {
 
         <section
           className="section"
+          id="storefront-ticker"
+          aria-labelledby="ticker-heading"
+        >
+          <div className="wrap">
+            <div className="section-head">
+              <h2 id="ticker-heading">
+                Show live metal prices on <em>your storefront</em>
+              </h2>
+              <p>
+                The same ticker you see at the top of this page, on your own
+                store. Add it from the theme editor, no code, on both plans.
+              </p>
+            </div>
+            <div className="pillars">
+              <div className="pillar">
+                <span className="pillar-flag">Your style</span>
+                <h3>Scrolling strip or static cards</h3>
+                <p>
+                  Pick which of the four metals to show, whether to display the
+                  change since the last update, and set your own colors to match
+                  your theme.
+                </p>
+              </div>
+              <div className="pillar">
+                <span className="pillar-flag">Any theme</span>
+                <h3>Works on older themes too</h3>
+                <p>
+                  On newer themes, add it as a section. On older themes, turn
+                  it on from the theme editor&apos;s App embeds panel. Either
+                  way you never touch your theme code.
+                </p>
+              </div>
+              <div className="pillar">
+                <span className="pillar-flag">One source</span>
+                <h3>Same rate feed as your pricing</h3>
+                <p>
+                  The ticker reads the same live rate feed your formulas use, so
+                  there is one source of truth. It fails quietly and stays
+                  hidden if rates are ever unavailable.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="section"
           id="screens"
           aria-labelledby="screens-heading"
         >
@@ -652,6 +708,7 @@ export default async function Home() {
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
           <Link href="/docs">Docs</Link>
+          <Link href="/blog">Blog</Link>
           <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>

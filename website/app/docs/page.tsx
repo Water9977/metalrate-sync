@@ -25,6 +25,7 @@ const TOC = [
   { id: "preview-sync", label: "Preview & Sync" },
   { id: "bulk-import", label: "Bulk import" },
   { id: "automatic-sync", label: "Automatic sync" },
+  { id: "storefront-ticker", label: "Storefront ticker" },
   { id: "history", label: "History & audit trail" },
   { id: "plans", label: "Plans & limits" },
   { id: "faq", label: "FAQ" },
@@ -63,7 +64,15 @@ const FAQS = [
   },
   {
     q: "How big a catalog can it handle?",
-    a: "Starter tracks up to 800 SKUs; Pro is unlimited. Bulk import matches by SKU against your live Shopify catalog, and for large stores it automatically uses Shopify's Bulk Operations API so a thousand-plus-SKU catalog is read reliably rather than timing out.",
+    a: "Starter tracks up to 800 products (variants); Pro is unlimited. Bulk import matches against your live Shopify catalog, and for large stores it automatically uses Shopify's Bulk Operations API so a catalog of thousands of products is read reliably rather than timing out.",
+  },
+  {
+    q: "Do I need SKUs on my products?",
+    a: "No. The CSV you download includes a variant_id column for every product, and the importer matches on that first, so a store with no SKUs at all works fine. SKU is only used as a fallback when you type a row by hand. Keep the variant_id column in the file when you re-upload.",
+  },
+  {
+    q: "Can I show live metal prices on my storefront?",
+    a: "Yes. The Metal Price Ticker is part of the app and is included on both plans. Add it from your theme editor with no code, choose a scrolling strip or static cards, pick which metals to show, and set your own colors. See the Storefront ticker section above for the steps for newer and older themes.",
   },
   {
     q: "Does the app read my customers' data?",
@@ -310,8 +319,9 @@ export default function Docs() {
                 </li>
                 <li>
                   Click <strong>Download current products as CSV</strong>. You
-                  get a spreadsheet with every product&apos;s SKU, current price,
-                  and any weight/formula already set.
+                  get a spreadsheet with every product&apos;s ID, name, current
+                  price, and any weight/formula already set. Products without a
+                  SKU are included too; SKUs are optional.
                 </li>
                 <li>
                   Edit it in Excel or Google Sheets. Fill in a weight column
@@ -323,7 +333,7 @@ export default function Docs() {
                 <li>Upload it back.</li>
               </ol>
               <p>
-                You get a report: how many rows matched and updated, which SKUs
+                You get a report: how many rows matched and updated, which rows
                 weren&apos;t found in your store, and which formula names
                 didn&apos;t match anything. Nothing fails silently. Leaving a
                 cell blank keeps whatever was already set for that product.
@@ -350,6 +360,55 @@ export default function Docs() {
                 manual sync, and each one is logged in History exactly the same
                 way. If your subscription lapses, automatic sync stops on its own
                 rather than continuing to run.
+              </p>
+            </section>
+
+            <section id="storefront-ticker">
+              <h2>Storefront ticker</h2>
+              <p>
+                Show live gold, silver, platinum and palladium prices on your
+                own store. It is included on both plans and needs no code.
+              </p>
+              <p>
+                <strong>On newer themes (Online Store 2.0):</strong>
+              </p>
+              <ol className="docs-steps">
+                <li>
+                  In Shopify admin go to{" "}
+                  <strong>Online Store → Themes → Customize</strong>.
+                </li>
+                <li>
+                  Click <strong>Add section</strong>, open the{" "}
+                  <strong>Apps</strong> category and choose{" "}
+                  <strong>Metal Price Ticker</strong>. Drag it where you want it.
+                </li>
+                <li>Adjust the settings and click Save.</li>
+              </ol>
+              <p>
+                <strong>On older themes</strong> (themes that don&apos;t show
+                apps under Add section):
+              </p>
+              <ol className="docs-steps">
+                <li>
+                  In the theme editor, click the <strong>App embeds</strong>{" "}
+                  icon in the left sidebar.
+                </li>
+                <li>
+                  Switch on <strong>Metal Price Ticker</strong> and click Save.
+                  It appears at the very top of the page, full width.
+                </li>
+              </ol>
+              <p>
+                In the settings you can choose a scrolling strip or static
+                cards, set the scroll speed, show or hide each metal and the
+                change since the last update, and set the background, text,
+                accent, up and down colors and the spacing.
+              </p>
+              <p className="docs-note">
+                The ticker reads the same live rates as your pricing. If rates
+                or your subscription are unavailable it stays hidden instead of
+                showing an empty box. View the live storefront page, not just
+                the editor preview, to see real prices.
               </p>
             </section>
 
@@ -394,6 +453,11 @@ export default function Docs() {
                     </tr>
                     <tr>
                       <td>Bulk CSV import &amp; export</td>
+                      <td>Included</td>
+                      <td>Included</td>
+                    </tr>
+                    <tr>
+                      <td>Storefront ticker</td>
                       <td>Included</td>
                       <td>Included</td>
                     </tr>
@@ -446,10 +510,12 @@ export default function Docs() {
                   setting).
                 </li>
                 <li>
-                  <strong>Bulk import says a SKU wasn&apos;t found.</strong> The
-                  app matches strictly by SKU against your live catalog — check
-                  the SKU in your CSV matches Shopify exactly (case and spacing
-                  matter).
+                  <strong>Bulk import says a row wasn&apos;t found.</strong> The
+                  app matches on the <code>variant_id</code> column from the
+                  file you downloaded, then falls back to SKU. Don&apos;t delete
+                  or edit the <code>variant_id</code> column. If you typed a row
+                  by hand using a SKU, check it matches Shopify exactly (case
+                  and spacing matter).
                 </li>
                 <li>
                   <strong>Bulk import says a formula name was unrecognized.</strong>{" "}

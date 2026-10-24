@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     template: "%s — MetalRate Sync",
   },
   description:
-    "MetalRate Sync reprices your Shopify catalog from live gold, silver, platinum and palladium rates, with a full preview and audit trail before every change.",
+    "Automatically update Shopify prices from live gold, silver, platinum and palladium spot rates. For bullion and jewelry sellers. 14-day free trial.",
   keywords: [
     "shopify gold price app",
     "live metal rates shopify",
