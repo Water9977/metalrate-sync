@@ -2,7 +2,36 @@
 
 Single source of truth for what's left. Cross-linked with [architecture.md](architecture.md) (full narrative/decisions) — this file is the flat checklist to work off of. Slash items as they're done, don't delete them (keep the record).
 
-Last updated: 2026-08-05 — **app approved and live on the Shopify App Store.** Two review bounces fixed and confirmed live in between (bounce #1: plan-change navigation, 5 attempts; bounce #2: 6 real bugs including a still-open Shopify framework bug worked around). Marketing site updated to match reality post-launch.
+Last updated: 2026-10-20 — **backend migrated to a new Railway account after the old plan lapsed (see section below).** Previously 2026-08-05: **app approved and live on the Shopify App Store.** Two review bounces fixed and confirmed live in between (bounce #1: plan-change navigation, 5 attempts; bounce #2: 6 real bugs including a still-open Shopify framework bug worked around). Marketing site updated to match reality post-launch.
+
+---
+
+## 🚨 2026-10-20 — backend migrated to a new Railway account (see architecture.md for the full story)
+
+- [x] Backend redeployed on the new account, fresh database, all 5 migrations applied, root `200`. New domain `https://metalrate-sync-app-production-5235.up.railway.app`. Shopify config released as `ounce-metalrate-sync-9`.
+- [ ] **Open your app once on the test store** (and the paying store must too) so sessions are re-created. Until a store does, its storefront ticker stays hidden and auto-syncs don't run.
+- [ ] **Rotate `METALPRICEAPI_KEY` and `SHOPIFY_API_SECRET`** (both pasted into chat during the migration), then update the new Railway service variables and redeploy.
+- [ ] Delete `Chrome Passwords.csv` from Downloads (plaintext password export).
+- [x] Sri Sathvik Silvers' refund request (paid charge `gid://shopify/AppSubscription/75703582889`) **closed 2026-10-23, fully refunded.** Sequence: offered 50% refund plus a $15 credit; they asked for a full refund; the remaining $15 was then refunded from Partner Dashboard. Subscription was already cancelled on 18 Oct, so nothing further bills. Lesson: the app was down 15-20 Oct, which covered their whole paid window, so holding out was always weak ground. Keep the backend monitored so this doesn't repeat.
+- [ ] Delete the OLD Railway project once everything is confirmed healthy (its Postgres volume is the only copy of old data).
+- [ ] Optional: custom domain `app.metalratesync.com` so a future host move needs no Shopify config change.
+- [ ] Commit the uncommitted backend work (SKU fix, `ticker-embed.liquid`, `ticker.js`, new `shopify.app.toml` URL).
+
+---
+
+## 🔎 2026-10-24 — SEO / App Store ranking (measured, see architecture.md)
+
+Measured today: App Store search position for our app. **#1 only for our own brand ("metalrate"); NOT in the top 24 for "gold price sync", "gold price", "spot price", "metal price", "jewelry pricing".** Lighthouse (local, v13.5): mobile 89/96/100/100, desktop 97/96/96/100 (performance/accessibility/best-practices/SEO). 0 reviews on the listing.
+
+- [x] **Listing copy edited and CONFIRMED LIVE 2026-10-25** (intro, details, features verified on the public page; stop-loss bullet was dropped and the ticker bullet added; no visible review delay). Original item: paste the new subtitle, intro, details, features and the 5 search terms from [research/listing-update-2026-10-24.md](research/listing-update-2026-10-24.md). CORRECTION to the earlier advice: Shopify requirement 4.4 says not to put keywords in the subtitle for search; keywords go in the 5 search terms. Keep the app name.
+- [x] **Website copy fixed 2026-10-24** (not yet committed/pushed): removed every "matched by SKU" claim, added a storefront-ticker section, docs section, and two FAQs ("Do I need SKUs?", "Can I show live prices on my storefront?"), tuned the meta description. **Listing copy still needs you**: the listing's own feature bullet still says "matched by SKU". Corrected copy that fits Shopify's character limits is in [research/listing-update-2026-10-24.md](research/listing-update-2026-10-24.md).
+- [ ] **Reviews**: 0 reviews is the biggest ranking and conversion gap. Ask real, active users only, after real use; never incentivize (Shopify rule). Competitors in this niche have 1-10 reviews, so even 3-5 real ones would put us ahead.
+- [x] **Website content, 2 posts written 2026-10-24** (not yet pushed): /blog, "How to update gold prices on Shopify automatically", "How to price jewelry by weight on Shopify"; added to the sitemap. A third post is optional.
+- [x] **New screenshots uploaded 2026-10-25** (user-reported; image content not independently checked). Original item: 4-6 images at 1600x900; the ChatGPT prompt and per-image briefs are in [research/chatgpt-listing-images-prompt.md](research/chatgpt-listing-images-prompt.md). Rules: no pricing/reviews/outcome claims, no personal data, no browser chrome.
+- [x] Link-in-text accessibility fixed (the new ticker note link now underlined). Also fixed an existing mobile bug: /docs scrolled sideways on phones because the weight-units list could not wrap. Mobile speed score varies between runs (89 in one, LCP breakdown in another showed under 1s), so no speed change was made.
+- [ ] **Fix the truncated search-result title tag**: the listing's title tag is cut mid-word ("...platinum, and pallad") and its meta description is still the old text. Proposed (if the listing form has title-tag/meta fields): title `Ounce: MetalRate Sync - Live gold & silver price updater` (56 chars), meta `Automatically update Shopify prices from live gold, silver, platinum and palladium rates. Preview every change first. 14-day free trial.` (136 chars).
+- [ ] **Push the website changes** (built and checked locally, uncommitted).
+- [ ] Re-measure the same App Store searches around 2026-11-08 to 2026-11-22 (2-4 weeks after the 2026-10-25 listing edit), and compare to the 2026-10-24 baseline in architecture.md.
 
 ---
 
@@ -109,7 +138,7 @@ Full build per explicit instruction ("no loophole and bugs which lets end user m
 
 ## 🧩 Optional / nice-to-have (post-MVP, not blocking anything)
 
-- [ ] Storefront rate ticker / price breakup theme extension.
+- [x] ~~Storefront rate ticker / price breakup theme extension~~ — **shipped 2026-08-26**, built for Chris's ticker request. Full writeup in architecture.md.
 - [ ] eBay/marketplace sync, POS sync (Chris asked for eBay specifically).
 - [ ] Built for Shopify badge — needs 50+ net installs on paid plans, 5+ reviews, minimum rating, and general good standing first (can't chase this until there's real usage — see architecture.md for exact thresholds pulled from Shopify's docs).
 - [ ] True 10k+ scale live-validated against a real seeded catalog (code path built and mocked-tested, not yet run against an actual huge real store).
@@ -275,3 +304,5 @@ Fact-checked against live shopify.dev docs 2026-07-19 (not memory — this stuff
 Superseded 2026-07-19: no more second app, no second Railway service, no Custom distribution. Chris installs the one real app once it's Public and live, same flow as any merchant.
 
 **Updated 2026-07-22**: also no private/free plan anymore — he never replied to the outreach emails, so there's no design-partner relationship active right now to build special-case infrastructure for. Normal 14-day trial like every other merchant if he ever installs. See "Path to launch" step 7 above.
+
+**Updated 2026-08-26/27: he re-engaged.** Real email exchange this time — asked for a ticker (built, see architecture.md "Storefront rate ticker"), asked how to migrate his existing catalog to our app (already covered by the existing CSV export/import — he only needs to fill in `weight_grams` + `formula` per SKU, price becomes live-computed going forward), and flagged that his store (liquidgoldnuggets.com) runs Shopify's **Brooklyn theme (vintage, not Online Store 2.0)** — which doesn't support app blocks at all, the reason he originally had to hand-paste ticker HTML for his current provider. Fixed by adding a second block to the same theme extension targeting `body` (app embed, Shopify-confirmed vintage+OS2.0 compatible) alongside the existing `section`-targeted one — no code paste needed for him either way. **Still not installed anywhere but our own test store** — the app embed block was built and deployed (`ounce-metalrate-sync-7`) pre-emptively so it's ready the moment he installs, not because he's live yet. Still no private/free plan — normal trial applies whenever he installs.
