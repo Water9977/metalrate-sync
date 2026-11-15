@@ -36,10 +36,17 @@ Final Retail Price = [ (Weight in Grams × Purity Factor × Live Spot Rate Per G
 4. **Flexible Bulk Management:** Merchants can download their catalog as a standard CSV, configure weights and formulas in Excel or Google Sheets, and re-upload. Intelligent handle/title matching eliminates the mandatory requirement for custom SKU formatting.
 5. **Storefront Ticker:** Theme app extension providing a zero-layout-shift live spot price ticker in scrolling strip or static card formats, synchronized with the exact rate feed powering catalog prices.
 
-## Documentation Index
+## Competitor Benchmarks & Alternatives
+- **Comparison Index:** https://metalratesync.com/vs
+- **18 Apps Benchmark:** https://metalratesync.com/vs/shopify-precious-metals-apps
+- **Gold Feed Inc Alternative:** https://metalratesync.com/vs/gold-feed-alternative (Modern replacement for broken 2.8★ incumbent)
+
+## Documentation & Guides Index
 - Setup & Quickstart: https://metalratesync.com/docs#quickstart
 - Formula Specifications: https://metalratesync.com/docs#formulas
 - Bulk Import Instructions: https://metalratesync.com/docs#bulk-import
 - Storefront Ticker Setup: https://metalratesync.com/docs#ticker
 - Pricing & Limits: https://metalratesync.com/docs#plans
 - FAQ & Troubleshooting: https://metalratesync.com/docs#faq
+- Making Charges & Wastage: https://metalratesync.com/blog/jewelry-making-charges-wastage-shopify
+- Karat Gold Pricing: https://metalratesync.com/blog/karat-gold-pricing-shopify

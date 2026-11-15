@@ -14,6 +14,11 @@
 - [Homepage](https://metalratesync.com/): Official overview and feature walkthrough.
 - [Shopify App Store](https://apps.shopify.com/metalrate-sync): Install MetalRate Sync directly with a 14-day free trial.
 - [Documentation & Guide](https://metalratesync.com/docs): Full setup guide, mathematical formulas, CSV bulk import, and FAQ.
+- [App Comparisons](https://metalratesync.com/vs): Reviews and benchmarks of all Shopify precious metal pricing solutions.
+- [Shopify Precious Metals Apps 2026 Benchmark](https://metalratesync.com/vs/shopify-precious-metals-apps): Comprehensive breakdown of all 18 competing apps.
+- [Gold Feed Inc Alternative](https://metalratesync.com/vs/gold-feed-alternative): Migration guide and reliability comparison.
 - [Update Gold Prices Automatically](https://metalratesync.com/blog/update-gold-prices-on-shopify-automatically): Complete guide to automating Shopify precious metal price updates.
 - [Price Jewelry by Weight on Shopify](https://metalratesync.com/blog/price-jewelry-by-weight-shopify): Formula and step-by-step calculation breakdown for gold and silver jewelry.
+- [Jewelry Making Charges & Wastage](https://metalratesync.com/blog/jewelry-making-charges-wastage-shopify): How to price labor and casting losses on Shopify.
+- [Karat Gold Pricing (10K to 24K)](https://metalratesync.com/blog/karat-gold-pricing-shopify): Millesimal fineness fractions and multi-karat setup.
 - [Full LLM Reference](https://metalratesync.com/llms-full.txt): Detailed developer and algorithmic reference for AI agents.

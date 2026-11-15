@@ -248,6 +248,7 @@ const videoJsonLd = [
       "From formula to a live price change: set a pricing formula, assign it to a product, preview the diff against a live rate, then apply it and watch the price actually update in the store.",
     thumbnailUrl: "https://i.ytimg.com/vi/IgCd8v6jm5k/hqdefault.jpg",
     embedUrl: `https://www.youtube-nocookie.com/embed/${WALKTHROUGH_YOUTUBE_ID}`,
+    uploadDate: "2026-10-24T00:00:00Z",
     publisher: { "@type": "Organization", name: "MetalRate Sync" },
   },
   {
@@ -258,6 +259,7 @@ const videoJsonLd = [
     thumbnailUrl:
       "https://cdn.loom.com/sessions/thumbnails/bcb859e66b9e4b7aa8ed44bf4591608b-50122224de6ee74e.gif",
     embedUrl: "https://www.loom.com/embed/bcb859e66b9e4b7aa8ed44bf4591608b",
+    uploadDate: "2026-10-24T00:00:00Z",
     duration: "PT2M6S",
     publisher: { "@type": "Organization", name: "MetalRate Sync" },
   },
@@ -269,6 +271,7 @@ const videoJsonLd = [
     thumbnailUrl:
       "https://cdn.loom.com/sessions/thumbnails/d41444a3f9734e62b91e0a6bc041f80a-d8108fbd87449b60.gif",
     embedUrl: "https://www.loom.com/embed/d41444a3f9734e62b91e0a6bc041f80a",
+    uploadDate: "2026-10-24T00:00:00Z",
     duration: "PT1M25S",
     publisher: { "@type": "Organization", name: "MetalRate Sync" },
   },
