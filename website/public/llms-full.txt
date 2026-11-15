@@ -16,6 +16,9 @@
 1. **Bullion Retailers & Coin Dealers:** Selling gold bars, silver rounds, platinum bullion, and investment-grade coins that must reflect live intraday market spot prices.
 2. **Jewelry Manufacturers & Wholesalers:** Selling rings, necklaces, chains, and bracelets priced dynamically based on metal weight, purity (carat/karat), craftsmanship labor (making charges), wastage allowances, and retail margins.
 
+## Interactive Tools & Calculators
+- **Live Pricing Calculator:** https://metalratesync.com/calculator (Real-time spot calculations across Gold, Silver, Platinum, Palladium, purities 10K-24K, making charges, and wastage).
+
 ## The Pricing Formula Engine
 MetalRate Sync calculates live prices using an unbending, deterministic mathematical formula:
 
@@ -48,5 +51,6 @@ Final Retail Price = [ (Weight in Grams × Purity Factor × Live Spot Rate Per G
 - Storefront Ticker Setup: https://metalratesync.com/docs#ticker
 - Pricing & Limits: https://metalratesync.com/docs#plans
 - FAQ & Troubleshooting: https://metalratesync.com/docs#faq
+- Selling Bullion on Shopify: https://metalratesync.com/guides/sell-gold-silver-bullion-shopify
 - Making Charges & Wastage: https://metalratesync.com/blog/jewelry-making-charges-wastage-shopify
 - Karat Gold Pricing: https://metalratesync.com/blog/karat-gold-pricing-shopify

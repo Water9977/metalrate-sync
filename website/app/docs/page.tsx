@@ -181,6 +181,7 @@ export default function Docs() {
           <div className="nav-links">
             <Link href="/#features">Features</Link>
             <Link href="/#pricing">Pricing</Link>
+            <Link href="/calculator">Calculator</Link>
             <Link href="/#faq">FAQ</Link>
           </div>
           <a

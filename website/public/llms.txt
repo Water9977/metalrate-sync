@@ -13,10 +13,12 @@
 ## Quick Links
 - [Homepage](https://metalratesync.com/): Official overview and feature walkthrough.
 - [Shopify App Store](https://apps.shopify.com/metalrate-sync): Install MetalRate Sync directly with a 14-day free trial.
+- [Live Pricing Calculator](https://metalratesync.com/calculator): Interactive gold, silver, and platinum jewelry pricing calculator.
 - [Documentation & Guide](https://metalratesync.com/docs): Full setup guide, mathematical formulas, CSV bulk import, and FAQ.
 - [App Comparisons](https://metalratesync.com/vs): Reviews and benchmarks of all Shopify precious metal pricing solutions.
 - [Shopify Precious Metals Apps 2026 Benchmark](https://metalratesync.com/vs/shopify-precious-metals-apps): Comprehensive breakdown of all 18 competing apps.
 - [Gold Feed Inc Alternative](https://metalratesync.com/vs/gold-feed-alternative): Migration guide and reliability comparison.
+- [How to Sell Bullion on Shopify](https://metalratesync.com/guides/sell-gold-silver-bullion-shopify): Complete operational guide for gold and silver dealers.
 - [Update Gold Prices Automatically](https://metalratesync.com/blog/update-gold-prices-on-shopify-automatically): Complete guide to automating Shopify precious metal price updates.
 - [Price Jewelry by Weight on Shopify](https://metalratesync.com/blog/price-jewelry-by-weight-shopify): Formula and step-by-step calculation breakdown for gold and silver jewelry.
 - [Jewelry Making Charges & Wastage](https://metalratesync.com/blog/jewelry-making-charges-wastage-shopify): How to price labor and casting losses on Shopify.

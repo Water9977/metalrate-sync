@@ -307,6 +307,7 @@ export default async function Home() {
             <a href="#screens">Inside the app</a>
             <a href="#demo">Watch it work</a>
             <a href="#pricing">Pricing</a>
+            <Link href="/calculator">Calculator</Link>
             <Link href="/docs">Docs</Link>
           </div>
           <a
@@ -710,7 +711,8 @@ export default async function Home() {
           </span>
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
-          <Link href="/docs">Docs</Link>
+          <Link href="/calculator">Calculator</Link>
+            <Link href="/docs">Docs</Link>
           <Link href="/blog">Blog</Link>
           <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
           <Link href="/privacy">Privacy</Link>

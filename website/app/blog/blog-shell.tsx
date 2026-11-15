@@ -14,6 +14,7 @@ export function BlogNav() {
         <div className="nav-links">
           <Link href="/#features">Features</Link>
           <Link href="/#pricing">Pricing</Link>
+          <Link href="/calculator">Calculator</Link>
           <Link href="/docs">Docs</Link>
           <Link href="/blog">Blog</Link>
         </div>
