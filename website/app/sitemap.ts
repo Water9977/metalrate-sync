@@ -16,6 +16,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     { url: `${base}/vs`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     {
+      url: `${base}/vs/best-shopify-gold-rate-apps`,
+      lastModified: new Date("2026-11-15"),
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
       url: `${base}/vs/shopify-precious-metals-apps`,
       lastModified: new Date("2026-11-15"),
       changeFrequency: "monthly",
@@ -27,8 +33,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.8,
     },
+    { url: `${base}/guides`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     {
       url: `${base}/guides/sell-gold-silver-bullion-shopify`,
+      lastModified: new Date("2026-11-15"),
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
+      url: `${base}/guides/jewelry-pricing-formula`,
+      lastModified: new Date("2026-11-15"),
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    { url: `${base}/features`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+    {
+      url: `${base}/features/bullion-repricing`,
+      lastModified: new Date("2026-11-15"),
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
+      url: `${base}/features/storefront-ticker`,
       lastModified: new Date("2026-11-15"),
       changeFrequency: "monthly",
       priority: 0.8,

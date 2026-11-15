@@ -54,6 +54,12 @@ const breadcrumbsJsonLd = {
 
 const COMPARISONS = [
   {
+    slug: "best-shopify-gold-rate-apps",
+    title: "Best Shopify Apps for Live Gold Rates (2026 Rankings)",
+    description:
+      "A comprehensive comparison benchmark of the top precious metal repricing tools for Shopify, evaluating API scale, preview protection, formula flexibility, and pricing.",
+  },
+  {
     slug: "shopify-precious-metals-apps",
     title: "Shopify Precious Metals Apps: 2026 Comparison & Benchmark",
     description:
