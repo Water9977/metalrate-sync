@@ -6,14 +6,30 @@ import { POSTS } from "../posts";
 const post = POSTS[0];
 
 export const metadata: Metadata = {
-  title: post.title,
+  title: {
+    absolute: post.seoTitle,
+  },
   description: post.description,
   alternates: { canonical: `/blog/${post.slug}` },
   openGraph: {
     type: "article",
-    title: post.title,
+    title: post.seoTitle,
     description: post.description,
     url: `https://metalratesync.com/blog/${post.slug}`,
+    images: [
+      {
+        url: "/images/hero-feature.png",
+        width: 1600,
+        height: 900,
+        alt: post.title,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: post.seoTitle,
+    description: post.description,
+    images: ["/images/hero-feature.png"],
   },
 };
 
@@ -22,11 +38,37 @@ const articleJsonLd = {
   "@type": "Article",
   headline: post.title,
   description: post.description,
+  image: "https://metalratesync.com/images/hero-feature.png",
   datePublished: post.date,
   dateModified: post.date,
   mainEntityOfPage: `https://metalratesync.com/blog/${post.slug}`,
   author: { "@type": "Organization", name: "MetalRate Sync" },
   publisher: { "@type": "Organization", name: "MetalRate Sync" },
+};
+
+const breadcrumbsJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://metalratesync.com",
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Blog",
+      "item": "https://metalratesync.com/blog",
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": post.title,
+      "item": `https://metalratesync.com/blog/${post.slug}`,
+    },
+  ],
 };
 
 export default function Post() {
@@ -35,6 +77,10 @@ export default function Post() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsJsonLd) }}
       />
       <BlogNav />
       <main className="legal">

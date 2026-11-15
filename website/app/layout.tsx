@@ -30,11 +30,11 @@ const SITE_URL = "https://metalratesync.com";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "MetalRate Sync — Live gold & silver price sync for Shopify",
-    template: "%s — MetalRate Sync",
+    default: "Shopify Gold & Silver Price Sync: Live Rates | MetalRate",
+    template: "%s | MetalRate",
   },
   description:
-    "Automatically update Shopify prices from live gold, silver, platinum and palladium spot rates. For bullion and jewelry sellers. 14-day free trial.",
+    "Automatically update Shopify prices from live gold, silver, platinum and palladium spot rates. Built for bullion and jewelry stores. Free 14-day trial.",
   keywords: [
     "shopify gold price app",
     "live metal rates shopify",
@@ -42,20 +42,32 @@ export const metadata: Metadata = {
     "jewelry price automation",
     "gold rate updater shopify",
     "precious metals pricing app",
+    "price jewelry by weight shopify",
+    "shopify bullion spot price",
   ],
   alternates: { canonical: "/" },
+  verification: {
+    google: "jW4hyACZItFlrrPT1huGCPlSskup8UPDxAzy19x8OtE",
+  },
   openGraph: {
     type: "website",
     url: SITE_URL,
     siteName: "MetalRate Sync",
-    title: "MetalRate Sync — Live gold & silver price sync for Shopify",
+    title: "Shopify Gold & Silver Price Sync: Live Rates | MetalRate",
     description:
-      "Reprice your whole catalog from live metal rates. Preview every change before it happens. Built for bullion dealers and by-weight jewelers.",
-    images: [{ url: "/images/hero-feature.png", width: 1600, height: 900 }],
+      "Automatically update Shopify prices from live gold, silver, platinum and palladium spot rates. Built for bullion and jewelry stores. Free 14-day trial.",
+    images: [
+      {
+        url: "/images/hero-feature.png",
+        width: 1600,
+        height: 900,
+        alt: "MetalRate Sync Shopify App Dashboard",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MetalRate Sync — Live gold & silver price sync for Shopify",
+    title: "Shopify Gold & Silver Price Sync: Live Rates | MetalRate",
     description:
       "Reprice your whole catalog from live metal rates. Preview every change before it happens.",
     images: ["/images/hero-feature.png"],

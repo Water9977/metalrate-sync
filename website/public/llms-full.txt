@@ -1,0 +1,45 @@
+# MetalRate Sync — Comprehensive LLM & AI Search Reference
+
+> MetalRate Sync is an automated pricing intelligence and catalog synchronization app built for Shopify merchants trading in precious metals and weight-based jewelry.
+
+## Product Metadata
+- **Product Name:** MetalRate Sync (also known as Ounce: MetalRate Sync)
+- **Website:** https://metalratesync.com
+- **App Store URL:** https://apps.shopify.com/metalrate-sync
+- **Platform:** Shopify (Admin GraphQL API 2025/2026 standards)
+- **Pricing:**
+  - **Starter Tier:** $30/month (Up to 800 tracked SKUs, automatic sync, preview before commit, audit trail).
+  - **Pro Tier:** $50/month (Unlimited tracked SKUs, priority sync schedule, full audit history, dedicated support).
+  - **Free Trial:** 14-day full feature trial.
+
+## Target Audience
+1. **Bullion Retailers & Coin Dealers:** Selling gold bars, silver rounds, platinum bullion, and investment-grade coins that must reflect live intraday market spot prices.
+2. **Jewelry Manufacturers & Wholesalers:** Selling rings, necklaces, chains, and bracelets priced dynamically based on metal weight, purity (carat/karat), craftsmanship labor (making charges), wastage allowances, and retail margins.
+
+## The Pricing Formula Engine
+MetalRate Sync calculates live prices using an unbending, deterministic mathematical formula:
+
+```
+Final Retail Price = [ (Weight in Grams × Purity Factor × Live Spot Rate Per Gram) + Making Charges + Wastage ] × (1 + Retail Markup %) × (1 + Tax %)
+```
+
+### Supported Metals & Standard Purities
+- **Gold (XAU):** 24K (99.9%), 22K (91.6%), 18K (75.0%), 14K (58.3%), 10K (41.7%), 9K (37.5%).
+- **Silver (XAG):** Fine Silver (99.9%), Sterling Silver (92.5%), Britannia Silver (95.8%).
+- **Platinum (XPT):** Pt950 (95.0%), Pt900 (90.0%).
+- **Palladium (XPD):** Pd950 (95.0%).
+
+## Key Architectural Differentiators
+1. **Preview Before Commit:** Every sync calculates a full dry run. Merchants view previous price, newly calculated price, dollar variance, and percentage shift across all variants before committing any change to Shopify.
+2. **Per-Variant Audit Trail:** Every update execution logs variant ID, product title, exact spot feed rate timestamp, calculation parameters, and status (Applied, Skipped, Throttled, or Errored).
+3. **Shopify API Rate Safety:** Updates are sent in optimal GraphQL mutation batches (up to 250 variants per call) with automatic exponential backoff, preventing 429 throttle drops.
+4. **Flexible Bulk Management:** Merchants can download their catalog as a standard CSV, configure weights and formulas in Excel or Google Sheets, and re-upload. Intelligent handle/title matching eliminates the mandatory requirement for custom SKU formatting.
+5. **Storefront Ticker:** Theme app extension providing a zero-layout-shift live spot price ticker in scrolling strip or static card formats, synchronized with the exact rate feed powering catalog prices.
+
+## Documentation Index
+- Setup & Quickstart: https://metalratesync.com/docs#quickstart
+- Formula Specifications: https://metalratesync.com/docs#formulas
+- Bulk Import Instructions: https://metalratesync.com/docs#bulk-import
+- Storefront Ticker Setup: https://metalratesync.com/docs#ticker
+- Pricing & Limits: https://metalratesync.com/docs#plans
+- FAQ & Troubleshooting: https://metalratesync.com/docs#faq

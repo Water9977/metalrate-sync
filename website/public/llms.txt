@@ -1,0 +1,19 @@
+# MetalRate Sync
+
+> MetalRate Sync is the premier Shopify application for automatically updating precious metal product prices (Gold, Silver, Platinum, Palladium) directly from live spot rate feeds. Designed specifically for bullion dealers and jewelry manufacturers who price by weight.
+
+## Core Capabilities
+- **Live Spot Rate Sync:** Real-time updates for Gold, Silver, Platinum, and Palladium spot prices.
+- **Preview Before Commit:** Interactive dry-run preview displaying current price, calculated price, and percentage change for every variant before any update touches Shopify.
+- **Audit Trail & Reliability:** Variant-level audit logging recording exact spot rates used, skipped reasons, and instant automatic retry on Shopify API throttle.
+- **Weight-Based Jewelry Formulas:** Support for metal purity (24K, 22K, 18K, 14K, 10K, sterling), making charges, wastage percentage, retail markup, and regional tax/GST.
+- **Storefront Ticker Widget:** Embeddable responsive ticker bars and static cards showing current spot rates matching catalog calculations.
+- **No SKUs Required:** Intelligent catalog matching via standard CSV exports without requiring SKU reconfiguration.
+
+## Quick Links
+- [Homepage](https://metalratesync.com/): Official overview and feature walkthrough.
+- [Shopify App Store](https://apps.shopify.com/metalrate-sync): Install MetalRate Sync directly with a 14-day free trial.
+- [Documentation & Guide](https://metalratesync.com/docs): Full setup guide, mathematical formulas, CSV bulk import, and FAQ.
+- [Update Gold Prices Automatically](https://metalratesync.com/blog/update-gold-prices-on-shopify-automatically): Complete guide to automating Shopify precious metal price updates.
+- [Price Jewelry by Weight on Shopify](https://metalratesync.com/blog/price-jewelry-by-weight-shopify): Formula and step-by-step calculation breakdown for gold and silver jewelry.
+- [Full LLM Reference](https://metalratesync.com/llms-full.txt): Detailed developer and algorithmic reference for AI agents.

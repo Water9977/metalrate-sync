@@ -31,3 +31,8 @@ Thumbs.db
 
 # Claude Code runtime state (not project content)
 .claude/scheduled_tasks.lock
+
+# Scrape and local merchant exports
+.firecrawl/
+Shopify Dev CSV/
+

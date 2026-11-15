@@ -5,15 +5,33 @@ import Link from "next/link";
 const CONTACT_EMAIL = "metalratesync@gmail.com";
 
 export const metadata: Metadata = {
-  title: "Documentation & guide",
+  title: {
+    absolute: "Shopify Metal Price Sync Docs: Setup & Formulas | MetalRate",
+  },
   description:
-    "Formulas, weight units, rate sources, bulk import, automatic sync, plans and FAQs for bullion and by-weight jewelry sellers on Shopify.",
+    "Master formulas, weight units, CSV bulk import, and live spot rate sync for bullion and jewelry stores on Shopify. Read the official documentation.",
   alternates: { canonical: "/docs" },
   openGraph: {
-    title: "MetalRate Sync — Documentation & guide",
+    type: "article",
+    title: "Shopify Metal Price Sync Docs: Setup & Formulas | MetalRate",
     description:
-      "Formulas, weight units, rate sources, bulk import, automatic sync, plans, and a full FAQ for bullion and by-weight jewelry sellers.",
+      "Master formulas, weight units, CSV bulk import, and live spot rate sync for bullion and jewelry stores on Shopify. Read the official documentation.",
     url: "https://metalratesync.com/docs",
+    images: [
+      {
+        url: "/images/hero-feature.png",
+        width: 1600,
+        height: 900,
+        alt: "MetalRate Sync Documentation & Setup Guide",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Shopify Metal Price Sync Docs: Setup & Formulas | MetalRate",
+    description:
+      "Master formulas, weight units, CSV bulk import, and live spot rate sync for bullion and jewelry stores on Shopify.",
+    images: ["/images/hero-feature.png"],
   },
 };
 
@@ -106,12 +124,53 @@ const faqJsonLd = {
   })),
 };
 
+const techArticleJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "MetalRate Sync Documentation and Guide",
+  "description":
+    "Master formulas, weight units, CSV bulk import, and live spot rate sync for bullion and jewelry stores on Shopify.",
+  "image": "https://metalratesync.com/images/hero-feature.png",
+  "datePublished": "2026-10-24",
+  "dateModified": "2026-10-24",
+  "mainEntityOfPage": "https://metalratesync.com/docs",
+  "author": { "@type": "Organization", "name": "MetalRate Sync" },
+  "publisher": { "@type": "Organization", "name": "MetalRate Sync" },
+};
+
+const breadcrumbsJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://metalratesync.com",
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Documentation",
+      "item": "https://metalratesync.com/docs",
+    },
+  ],
+};
+
 export default function Docs() {
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(techArticleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsJsonLd) }}
       />
       <nav className="nav" aria-label="Main">
         <div className="nav-inner">
@@ -426,7 +485,7 @@ export default function Docs() {
 
             <section id="plans">
               <h2>Plans &amp; limits</h2>
-              <div className="docs-table-wrap">
+              <div className="docs-table-wrap table-scroll" role="region" tabIndex={0} aria-label="Plans and limits comparison table">
                 <table className="docs-table">
                   <thead>
                     <tr>
